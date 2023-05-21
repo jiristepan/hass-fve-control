@@ -1,0 +1,11 @@
+{
+  "codeowners": ["@jiristepan"],
+  "config_flow": false,
+  "dependencies": [],
+  "documentation": "https://github.com/jiristepan/hass-fve-control",
+  "domain": "fve_control",
+  "iot_class": "calculated",
+  "name": "FVE Load Control",
+  "requirements": [],
+  "version": "0.0.1"
+}

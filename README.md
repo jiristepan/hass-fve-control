@@ -1,1 +1,3 @@
-# hass-fve-control
+# FVE Load Control for Home Assistant
+
+## Installation
