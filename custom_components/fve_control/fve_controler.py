@@ -112,6 +112,7 @@ class FVE_Controler:
 
         free_power = 0
 
+
         if int(self.extra_load_priority) == 1:
             free_power = self._data["fve_free_power_minimal"]
 
@@ -199,17 +200,35 @@ class FVE_Controler:
     def _calculate_fve_variables(self):
         """ calculate various data"""
 
-        # free power - to stop charging battery battery
-        # it is smart to use when sun power is rising
-        self._data["fve_free_power_middle"] = self._data[f"{NAME_BATTERY_POWER}_mean"] - self._data[f"{NAME_GRID_POWER}_mean"]
 
-        # minimal free power. Just 0 - export to grid.
-        # todo solve island systems
-        self._data["fve_free_power_minimal"] = 0 - self._data[f"{NAME_GRID_POWER}_mean"]
+        if self._data[f"{NAME_PV_POWER}_mean"] > self._data[f"{NAME_LOAD_POWER}_mean"]:
+            # minimal free power. Just 0 - export to grid.
+            # todo solve island systems
+            self._data["fve_free_power_minimal"] = 0 - self._data[f"{NAME_GRID_POWER}_mean"]
 
-        # maximal free power. Combination of -grid export and maximum battery out power
-        # this causes to lower battery SOC. Can be very dangerous and take something from the grid
-        self._data["fve_free_power_maximal"] = self._data[f"{NAME_BATTERY_POWER}_mean"] - self._data[f"{NAME_GRID_POWER}_mean"] + self._config["fve_battery_max_power_out"]
+
+            # free power - to stop charging battery battery
+            # it is smart to use when sun power is rising
+            self._data["fve_free_power_middle"] = self._data[f"{NAME_BATTERY_POWER}_mean"] - self._data[f"{NAME_GRID_POWER}_mean"]
+
+
+            # maximal free power. Combination of -grid export and maximum battery out power
+            # this causes to lower battery SOC. Can be very dangerous and take something from the grid
+            self._data["fve_free_power_maximal"] = self._data[f"{NAME_BATTERY_POWER}_mean"] - self._data[f"{NAME_GRID_POWER}_mean"]
+            if self._data[f"{NAME_BATTERY_SOC}_mean"] >= self._config.get("fve_battery_soc_min"):
+                self._data["fve_free_power_maximal"] = self._data["fve_free_power_maximal"] + self._config.get("fve_battery_max_power_out")
+
+        else: # missing energy
+            # grid buy + potential to charge battery
+            self._data["fve_free_power_minimal"] = 0 - self._data[f"{NAME_GRID_POWER}_mean"]
+            if self._data[f"{NAME_BATTERY_SOC}_mean"] <= 99.0:
+                self._data["fve_free_power_minimal"] =  self._data["fve_free_power_minimal"] - (self._config.get("fve_battery_max_power_in") - self._data[f"{NAME_BATTERY_POWER}_mean"])
+
+            # grid buy + stop discharge
+            self._data["fve_free_power_middle"] = (0 - self._data[f"{NAME_GRID_POWER}_mean"]) + self._data[f"{NAME_BATTERY_POWER}_mean"]
+
+            # grid buy
+            self._data["fve_free_power_maximal"] =0 - self._data[f"{NAME_GRID_POWER}_mean"]
 
         #missing wats in battery
         battery_soc = self._hass.states.get(self._config["fve_battery_soc_sensor"])
