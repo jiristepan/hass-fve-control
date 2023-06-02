@@ -142,17 +142,51 @@ Componenta do HA přidá řadu nových entit.
 
 ![](./imgs/2023-05-31-22-14-20.png)
 
-- senzory, které vytvářejí statistiky ze vstupních hodnot (průměr, odchylka, ...). Tyto statistiky se počítají za dobu dle konfigurace. Pokud je doba historie 10minut a interval update je 10 sec, bude se počítat klouzavý průměr z 60-ti hodnot. Pokud se historie zkrátí bude systém reagovat "rychleji" na změny
-- řady kalkulovaných metrik, které se mohou hodit pro automatizace (doba do nejvyšího výkonu, chybějící Wh v baterii a doba do plného nabití atd.)
-- input number `extra_load_priority` nastavuje jakou hodnoty free energie budeme uvažovat. 1 je ta minimální (konzervativní), 3 je střední, 5 je maximum. Hodnoty 2 a 4 jsou průměry mezi. Jako default je 2. Toto číslo do budoucna plánuji dynamicky měnit dle situace. Zatím jej můžete nechat na 2 a nebo měnit nějakou automatizací. Například dopoledne při baterii nad 50% dát agresivnější a odpoledne vrárit na 2 či jedna.
-- ...
+- podstatné je input number `extra_load_priority` nastavuje jakou hodnoty free energie budeme uvažovat. 1 je ta minimální (konzervativní), 3 je střední, 5 je maximum. Hodnoty 2 a 4 jsou průměry mezi. Jako default je 2. Toto číslo do budoucna plánuji dynamicky měnit dle situace. Zatím jej můžete nechat na 2 a nebo měnit nějakou automatizací. Například dopoledne při baterii nad 50% dát agresivnější a odpoledne vrárit na 2 či jedna.
 
-Jak jsem uváděl systém sám nic nena
+- dle něj se pak vybírá `sensor.free_power_for_decision`
+- aktuální odhadovaná hodnota spuštěného výkonu navíc je `sensor.fve_control_extra_load_power` a seznam zapnutých spotřebičů je `sensor.free_extra_load_names`, Je třeba si uvědomit, že alokovaná energie je pouze odhadovaná. Používá se k tomu informace ze senzorů spotřebičů (pokud je) a pokud není, tak nastavená minimální hodnota odběru.
 
+- dále jsou tam různé senzory, které vytvářejí statistiky ze vstupních hodnot (průměr, odchylka, ...). Tyto statistiky se počítají za dobu dle konfigurace. Pokud je doba historie 10minut a interval update je 10 sec, bude se počítat klouzavý průměr z 60-ti hodnot. Pokud se historie zkrátí bude systém reagovat "rychleji" na změny
 
+- také řady kalkulovaných metrik, které se mohou hodit pro automatizace (doba do nejvyšího výkonu, chybějící Wh v baterii a doba do plného nabití atd.)
+
+Do detailu další popíši později nejsou úplně potřeba.
+
+Extra load priority je ale klíčová hodnota
+
+|hodnota| kolik energie zkouší systém udat | kolik se snaží naopak získat vypínáním| použití |
+|---|---|---|---|
+|1| jen hodnotu přetoků| co nejvíce bude vypínat. Jednak aby se nenakupovalo z gridu a poté aby se na max nabíjela baterie | Konzervativní nastavení. Neovlivňuje nijak nabíjení baterie. Ale asi bude docházet k přetokům ale baterie bude nejvíce a nejrychleji nabitá. Vhodný na konci dne. |
+|2| průměr mezi 1 a 3| ||
+|3|přetoky nabíjecí výkon baterie | systém se pokusí uvolnit tolik výkonu aby se zastavilo případné vybíjení baterie a vynuloval nákup z gridu | Nabíjení baterie se může zastavit. Vhodné pokud je baterie dost nabitá a máme před sebou ještě dlouhý a hezký den. |
+|4| průměr mezi 3 a 5|||
+|5| přetoky + nabíjení baterie + maximální vybíjení baterie | jen omezí nákup z gridu | Režim vybíjí baterii. Má smysl pokud víme, že bude hodně svítit a baterii znovu nabijeme na max |
+
+Do budoucna plánuji přidat chytřé rozhodování o těchto režimech na základě stavu baterie, fázi výroby apod.
+Aktuálně dopručuji si automatizace nastavit:
+- pokud je sensor.fve_control_
 
 
 ## Nastavení vypínání a zapínání spotřebičů
+Jak jsem psal - tato komponenta přímo sama od sebe spotřebiče neovládá. Pokud usoudí, že je třeba něco vypnout / zapnout prostě pošle do HA event `fve_control`.
+
+![](./imgs/2023-05-31-23-03-10.png)
+
+V datech eventy je uvedeno:
+- spotřebič (name)
+- akce k provedení. Ta nabývá hodnot: 
+  - start
+  - stop
+  - increase
+  - decrease
+  - minimum
+  - maximum
+
+Start stop jsou asi jasné. Ostatní jsou pro spotřebiče typu wallbox. Jedná se o pokyn ke zvýšení / snížení výkonu o jeden stupeň a nebo nastavení na maximum či minimum.
+
+
+
 
 
 

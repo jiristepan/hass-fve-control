@@ -167,8 +167,23 @@ async def async_setup_platform(
             "options":["night","start","maximum","finish","lowsun"],
             "device_class": SensorDeviceClass.ENUM,
             "type": "str"
+        }),
+        General_FVE_Control_Entity(fve_controler,{
+            "fve_data_attribute": "running_appliances_names",
+            "name": "FVE Control: running appliances",
+            "unique_id": "running_appliances_names",
+            "device_class": SensorDeviceClass.ENUM,
+            "type": "str"
+        }),
+        General_FVE_Control_Entity(fve_controler,{
+            "fve_data_attribute": "running_appliances_power",
+            "name": "FVE Control: running applikaces power",
+            "unique_id": "running_appliances_power",
+            "device_class" : SensorDeviceClass.POWER,
+            "state_class" : SensorStateClass.MEASUREMENT,
+            "native_unit_of_measurement": POWER_WATT,
+            "type":"float"
         })
-
     ]
 
     async_add_entities(entities, update_before_add=False)

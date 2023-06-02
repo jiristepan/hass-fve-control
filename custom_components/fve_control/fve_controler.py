@@ -133,9 +133,10 @@ class FVE_Controler:
 
         _LOGGER.debug(f'Making decision for free power: {free_power}')
         if (free_power > 100):
+            running_appliances = filter(lambda appliace: appliance.is_on, sorted(self._appliances, key=lambda x: x.priority))
             for appliance in sorted(self._appliances, key=lambda x: x.priority, reverse=True):
                 # _LOGGER.debug(f"Negotiate with {appliance.name}")
-                decisions = appliance.negotiate_free_power(free_power)
+                decisions = appliance.negotiate_free_power(free_power, running_appliances)
                 if len(decisions) > 0:
                     _LOGGER.debug(decisions)
                     break
@@ -199,7 +200,6 @@ class FVE_Controler:
 
     def _calculate_fve_variables(self):
         """ calculate various data"""
-
 
         if self._data[f"{NAME_PV_POWER}_mean"] > self._data[f"{NAME_LOAD_POWER}_mean"]:
             # minimal free power. Just 0 - export to grid.
@@ -277,6 +277,15 @@ class FVE_Controler:
             self._data["hours_to_fve_max"] = hours_to_fve_max
             self._data["hours_to_fve_start"] = hours_to_fve_start
             self._data["hours_to_fve_stop"] = hours_to_fve_stop
+
+
+        running_appliances = filter(lambda x: x.is_on, self._appliances)
+        running_appliances  = sorted(running_appliances, key=lambda x: x.priority, reverse=True)
+        running_appliances_power = sum(map(lambda x: x.actual_power,running_appliances))
+        running_appliances_names = ",".join(map(lambda x: x.name,running_appliances))
+
+        self._data["running_appliances_power"] = running_appliances_power
+        self._data["running_appliances_names"] = running_appliances_names
 
 
     def _calculate_hour_diff(self, current_time, some_time):

@@ -132,15 +132,36 @@ class FVE_Appliance:
     def actual_power(self) -> float:
         return self._h_power
 
-
-
-    def negotiate_free_power(self, free_power:int):
+    def negotiate_free_power(self, free_power:int, running_appliances):
         """answer if this appliance can use some of free available power"""
         self.update()
         now = datetime.now().timestamp()
         actions = []
 
-        _LOGGER.debug(f'FREEPOWER {free_power} :: {self.state}')
+        running_appliances_power = sum(
+            map(
+                lambda item: item.actual_power,
+                filter(
+                    lambda item: item.name != self.name and item.priority < self.priority,
+                    running_appliances
+                )
+            )
+        )
+
+        _LOGGER.debug(f'FREEPOWER {free_power}, state:{self.state}, other_appliances_power:{running_appliances_power}')
+
+        # it is neccesary to switch off something other
+        if self.is_available and not self.is_on and self.minimal_power > free_power and self.minimal_power < free_power and running_appliances_power:
+            decisions = []
+            needed_power = self.minimal_power - free_power
+            found_power = 0
+            decisions = []
+            for appliance in running_appliances:
+                decisions = decisions + appliance.negotiate_missing_power(needed_power)
+                found_power = sum(map(lambda x: abs(x.expected_power_ballance)))
+                if found_power > needed_power:
+                    actions = decisions
+                    break
 
         # if is on and is enough power, start it
         if self.is_available and not self.is_on and self.minimal_power < free_power:
@@ -199,7 +220,7 @@ class FVE_Appliance:
         self.update()
         now = datetime.now().timestamp()
         actions = []
-        missing_power = 0 - free_power
+        missing_power = abs(free_power)
 
         _LOGGER.debug(f'Nego MISSING {free_power} :: {self.state} ')
 
