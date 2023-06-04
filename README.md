@@ -1,5 +1,7 @@
 # FVE Load Control for Home Assistant
 
+Integrace pro řízení spotřeby domu pro minimalizaci přetoků do sítě.
+
 ## Intro
 Cílem projektu je eliminovat přetoky z domácích FVE pomocí automatického řízení spotřebičů.
 Podívejme se na reálnou situaci ze https://solar-assistant.io. Žlutá je výkon FVE, modrá spotřeba domu, červená odběr / přetoky do sítě.
