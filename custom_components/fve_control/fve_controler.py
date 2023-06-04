@@ -2,6 +2,7 @@ from datetime import datetime
 import logging
 import numpy as np
 import pytz
+import requests
 
 from homeassistant.core import HomeAssistant
 from .const import *
@@ -77,6 +78,16 @@ class FVE_Controler:
     ]
 
     def __init__(self, config, hass:HomeAssistant, device_info) -> None:
+
+        home = hass.config.as_dict()
+        self._hass_instance_id = {}
+        if not home is None:
+            self._hass_instance_id["name"] = home.get("location_name")
+            self._hass_instance_id["latitude"] = home.get("latitude")
+            self._hass_instance_id["longitude"] = home.get("longitude")
+
+        # _LOGGER.debug(f"FVE for HA instance: {self._hass_instance_id}")
+
         self._config = config
         self._hass = hass
         self.device_info = device_info
@@ -103,6 +114,11 @@ class FVE_Controler:
 
         return False
 
+    def send_analytics(self):
+        payload = {
+            "instance-id": "TODO"
+        }
+
 
     def decide(self,ts=None):
 
@@ -111,7 +127,6 @@ class FVE_Controler:
             return True
 
         free_power = 0
-
 
         if int(self.extra_load_priority) == 1:
             free_power = self._data["fve_free_power_minimal"]
@@ -132,29 +147,22 @@ class FVE_Controler:
         decisions = []
 
         _LOGGER.debug(f'Making decision for free power: {free_power}')
-        if (free_power > 100):
+        if (free_power > self._config["treshold_power"]):
             running_appliances = filter(lambda appliace: appliance.is_on, sorted(self._appliances, key=lambda x: x.priority))
             for appliance in sorted(self._appliances, key=lambda x: x.priority, reverse=True):
-                # _LOGGER.debug(f"Negotiate with {appliance.name}")
                 decisions = appliance.negotiate_free_power(free_power, running_appliances)
                 if len(decisions) > 0:
-                    _LOGGER.debug(decisions)
                     break
-                else:
-                    _LOGGER.debug("No decisions")
 
-        if (free_power < -100):
+        if (free_power < self._config["treshold_power"]):
             for appliance in sorted(self._appliances, key=lambda x: x.priority):
-                # _LOGGER.debug(f"Negotiate with {appliance.name}")
-                force = free_power < -500
+                force = free_power < self._config["force_stop_power"]
                 decisions = appliance.negotiate_missing_power(free_power, force = force)
                 if len(decisions) > 0:
-                    _LOGGER.debug(decisions)
                     break
-                else:
-                    _LOGGER.debug("No decisions")
 
         for decision in decisions:
+            _LOGGER.debug(f"Firing FVE decision: {decision.get_data()}")
             self._hass.bus.fire("fve_control", decision.get_data())
 
         return True
@@ -183,10 +191,10 @@ class FVE_Controler:
         #calculate
         self._calculate_fve_variables()
 
-        _LOGGER.debug(self._data)
+        # _LOGGER.debug(self._data)
         for appliance in sorted(self._appliances, key=lambda x: x.priority, reverse=True):
             appstate = appliance.state
-            _LOGGER.debug(appstate)
+            # _LOGGER.debug(appstate)
 
         return True
 

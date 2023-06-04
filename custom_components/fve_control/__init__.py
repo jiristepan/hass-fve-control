@@ -74,7 +74,11 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Optional("update_interval_sec", default=10): int,
                 vol.Optional("decide_interval_sec", default=60): int,
                 vol.Optional("history_in_minutes", default=10): int,
-                vol.Optional("appliances"): vol.All(cv.ensure_list, [LOAD_SCHEMA])
+                vol.Optional("appliances"): vol.All(cv.ensure_list, [LOAD_SCHEMA]),
+                vol.Optional("analytics", default=True): bool,
+                vol.Optional("treshold_power", default=100): int,
+                vol.Optional("force_stop_power", default=1000): int
+
             }
         ),
     },

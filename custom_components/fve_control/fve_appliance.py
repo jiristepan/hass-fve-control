@@ -151,14 +151,15 @@ class FVE_Appliance:
         _LOGGER.debug(f'FREEPOWER {free_power}, state:{self.state}, other_appliances_power:{running_appliances_power}')
 
         # it is neccesary to switch off something other
-        if self.is_available and not self.is_on and self.minimal_power > free_power and self.minimal_power < free_power and running_appliances_power:
+        if self.is_available and not self.is_on and self.minimal_power > free_power and self.minimal_power < (free_power + running_appliances_power):
             decisions = []
             needed_power = self.minimal_power - free_power
             found_power = 0
             decisions = []
+            _LOGGER.debug(f"Stoping other appliances. Looking for {needed_power}")
             for appliance in running_appliances:
                 decisions = decisions + appliance.negotiate_missing_power(needed_power)
-                found_power = sum(map(lambda x: abs(x.expected_power_ballance)))
+                found_power = sum(map(lambda x: abs(x.expected_power_ballance),decisions))
                 if found_power > needed_power:
                     actions = decisions
                     break
