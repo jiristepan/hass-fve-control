@@ -123,19 +123,47 @@ A následuje definice spotřebičů. Jsou k dispozici dva typy:
 
 | parametr | povinný | význam |
 |----------| ---    | --- |
-|name|ano| název zarizeni |
-|type|ano| typ |
+|name|ano| název zařízení |
+|type|ano| typ. Hodnota `wallbox` nebo `constant_load` |
 |min_power|ano| minimální očekávaný výkon [W]|
 |max_power|jen pro wallbox| maximální možný výkon [W]|
 |step_power|jen pro wallbox| krok zvětšení výkonu [W]|
-|availability_sensor|ano| senzor, který indikuje zda je spotřebič dostupný |
-|switch_sensor|ano| senzor, který indikuje zapnutí vypnutí. Zde je důležité aby indikoval skutečně zapnutí na spotřebu. Tedy u wallboxu zapnutí do stavu charging apod. Ne pohotovostní mód bez odběru.|
-|power_sensor|ne| pokud je možní, tak senzor, který ukazuje skutečný příkon |
-|static_priority|ano| priorita. Systém zkouší zapnout ten s nejvyšší prioritou a neopak vypíná jako první ten s nejnižčí. Celé číslo, doporučuji nula až sto|
+|availability_sensor|ano| binary senzor, který indikuje zda je spotřebič dostupný a je chtěný jeho start. Příklad: wallbox je dostupný pokud není auto vybité a je vůbec v připojené. Klimatizace je dostupná pokud je v bytě nad 26 stupňů apod. Doporučuji si na toto udělat template senzory. Příklad dále.  |
+|switch_sensor|ano| senzor, který indikuje zapnutí vypnutí. Zde je důležité aby indikoval skutečně zapnutí na spotřebu. Tedy u wallboxu zapnutí do stavu charging apod. Ne pohotovostní mód bez odběru. Může se jednat o switch nebo binary senzor. Očekávané hodnoty jsou "on" / "off"|
+|power_sensor|ne| pokud je možné, tak senzor, který ukazuje skutečný příkon zapnutého spotřebiče ve wattech. Pokud není vyplněno snaží se komponenta příkon odhadnout z hodnoty minimálního příkonu. Ale to je pochopitelně nouzová varianta a zhoršuje rozhodování. |
+|static_priority|ano| priorita. Systém zkouší zapnout ten s nejvyšší prioritou a naopak vypíná jako první ten s nejnižčí. Celé číslo, doporučuji nula až sto|
 |minimal_running_minutes|ne| Minimální doba po kterou má spotřebič běžet. |
 |startup_time_minutes|ne| Očekávaná doba za jakou má naběhnout na plný výkon. Vhodné třeba u kryptominerů, kdy se pár minut bootuje |
 
 Jakmile toto nakonfigurujete a zrestartujete HA, měli je vše připraveno. Poznáte to dle řady nových senzorů
+
+### Příklad template senzoru
+Příklad binary senzoru available pro wallbox v `configuration.yaml`
+
+```
+template:
+  - binary_sensor:
+      - name: Wallbox charging available
+        unique_id: wallbox_charging_available
+        state: >
+            {% set wallbox_state = states("sensor.wallbox_gen_2_10_0_30_9_state") %}
+            {% set car_battery_soc = states("sensor.tucson_ev_battery_level") | int %}
+            
+            {% if 
+                (
+                   wallbox_state == "connect" or 
+                   wallbox_state == "finished" or 
+                   wallbox_state == "charging"
+                 ) and (
+                   car_battery_soc < 100
+                 )
+            %}
+            true
+            {% else %}
+            false
+            {% endif %}
+
+```
 
 ## Senzory a další prvky
 Componenta do HA přidá řadu nových entit.

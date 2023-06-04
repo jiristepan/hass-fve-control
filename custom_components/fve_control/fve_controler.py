@@ -148,7 +148,7 @@ class FVE_Controler:
 
         _LOGGER.debug(f'Making decision for free power: {free_power}')
         if (free_power > self._config["treshold_power"]):
-            running_appliances = filter(lambda appliace: appliance.is_on, sorted(self._appliances, key=lambda x: x.priority))
+            running_appliances = list(filter(lambda appliace: appliace.is_on, sorted(self._appliances, key=lambda x: x.priority)))
             for appliance in sorted(self._appliances, key=lambda x: x.priority, reverse=True):
                 decisions = appliance.negotiate_free_power(free_power, running_appliances)
                 if len(decisions) > 0:

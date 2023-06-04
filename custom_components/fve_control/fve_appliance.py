@@ -75,11 +75,9 @@ class FVE_Appliance:
         # _LOGGER.debug(f"Updateting appliance {self.name}")
         #availability of the device
         if (not self.availability_sensor is None):
-            # _LOGGER.debug(f"availability sensor {self.availability_sensor}")
             s = self._hass.states.get(self.availability_sensor)
-            # _LOGGER.debug(f"availability state {s}")
-            out = (not s is None and s.state != "unknown" and s.state != "unavailable")
-            # _LOGGER.debug(f"availability: {out}")
+            _LOGGER.debug(f"availability sensor:{s}")
+            out = ((not s is None) and s.state == "on")
             self._h_availability = out
         else:
             _LOGGER.warning(f"ERROR - no availability sensor for {self.name}")
@@ -138,13 +136,14 @@ class FVE_Appliance:
         now = datetime.now().timestamp()
         actions = []
 
+        _LOGGER.debug(f"RUNNING APP {running_appliances}")
         running_appliances_power = sum(
             map(
                 lambda item: item.actual_power,
-                filter(
+                list(filter(
                     lambda item: item.name != self.name and item.priority < self.priority,
                     running_appliances
-                )
+                ))
             )
         )
 
