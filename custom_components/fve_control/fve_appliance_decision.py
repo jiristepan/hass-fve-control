@@ -1,4 +1,5 @@
 from time import time
+from datetime import datetime
 
 class FVE_appliance_decision:
     """
@@ -26,14 +27,12 @@ class FVE_appliance_decision:
     def __init__(self, appliance_name, action,
                  expected_power_ballance = None,
                  actual_free_power=None,
-                 expected_maturity_timestamp=None) -> None:
+                 expected_maturity_sec=60) -> None:
         self.timestamp = time()
         self.action = action
         self.appliance_name = appliance_name
         self.expected_power_ballance = expected_power_ballance
-        self.actual_free_power = actual_free_power
-        self.expected_final_free_power = actual_free_power - expected_power_ballance
-        self.expected_maturity_timestamp = expected_maturity_timestamp
+        self.expected_maturity_timestamp = datetime.now().timestamp()+expected_maturity_sec
 
     def get_data(self):
         out = {

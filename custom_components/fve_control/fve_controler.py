@@ -91,8 +91,9 @@ class FVE_Controler:
         self._config = config
         self._hass = hass
         self.device_info = device_info
-        self._history = {
-        }
+        self._history = {}
+        self._decision_history = {}
+        self._last_decision_ts = 0
 
         self.MAX_HISTORY_TIME = int(self._config.get("history_in_minutes") *60)
         self.UPDATE_INTERVAL = int(self._config.get("update_interval_sec"))
@@ -119,53 +120,145 @@ class FVE_Controler:
             "instance-id": "TODO"
         }
 
-
     def decide(self,ts=None):
 
+        now_ts = datetime.now().timestamp()
         if not self.is_ready():
             _LOGGER.debug("Decision not ready")
             return True
 
-        free_power = 0
+        # if now_ts - self._last_decision_ts < self.MAX_HISTORY_TIME / 3:
+        #     _LOGGER.debug(F"Wainting after decision [{now_ts - self._last_decision_ts} / {self.MAX_HISTORY_TIME / 3}]")
+        #     return True
 
-        if int(self.extra_load_priority) == 1:
-            free_power = self._data["fve_free_power_minimal"]
+        free_power = self._data["fve_free_power"]
 
-        if int(self.extra_load_priority) == 2:
-            free_power = (self._data["fve_free_power_minimal"] + self._data["fve_free_power_middle"]) / 2
-
-        if int(self.extra_load_priority) == 3:
-            free_power = self._data["fve_free_power_middle"]
-
-        if int(self.extra_load_priority) == 4:
-            free_power = (self._data["fve_free_power_maximal"] + self._data["fve_free_power_middle"]) / 2
-
-        if int(self.extra_load_priority) == 5:
-            free_power = self._data["fve_free_power_maximal"]
-
-        self._data["fve_free_power"] = free_power
         decisions = []
 
-        _LOGGER.debug(f'Making decision for free power: {free_power}')
+        running_appliances = list(filter(lambda applinace: applinace.is_on, sorted(self._appliances, key=lambda x: x.priority)))
+        running_appliances_power = sum(
+            map( lambda item: item.actual_power, running_appliances)
+        )
+        available_stoped_appliances = list(filter(lambda a: a.is_available and (not a.is_on), sorted(self._appliances, key=lambda x: x.priority, reverse=True)))
+        _LOGGER.debug(f"Free power: {free_power}, running power: {running_appliances_power}, running appliances: {','.join([x.name for x in running_appliances])}, available: {','.join([x.name for x in available_stoped_appliances])}")
+
         if (free_power > self._config["treshold_power"]):
-            running_appliances = list(filter(lambda appliace: appliace.is_on, sorted(self._appliances, key=lambda x: x.priority)))
-            for appliance in sorted(self._appliances, key=lambda x: x.priority, reverse=True):
-                decisions = appliance.negotiate_free_power(free_power, running_appliances)
-                if len(decisions) > 0:
-                    break
+            decisions = self.start_appliances(free_power, available_stoped_appliances, running_appliances_power, running_appliances)
 
-        if (free_power < self._config["treshold_power"]):
-            for appliance in sorted(self._appliances, key=lambda x: x.priority):
-                force = free_power < self._config["force_stop_power"]
-                decisions = appliance.negotiate_missing_power(free_power, force = force)
-                if len(decisions) > 0:
-                    break
 
-        for decision in decisions:
-            _LOGGER.debug(f"Firing FVE decision: {decision.get_data()}")
-            self._hass.bus.fire("fve_control", decision.get_data())
+        if (free_power < 0 - self._config["treshold_power"]):
+            decisions = self.stop_appliances(abs(free_power), running_appliances)
+
+        if len(decisions) > 0:
+            self._reset_history()
+            self._last_decision_ts = now_ts
+            for decision in decisions:
+                _LOGGER.debug(f"Firing FVE decision: {decision.get_data()}")
+                self._hass.bus.fire("fve_control", decision.get_data())
 
         return True
+
+
+    def start_appliances(self, free_power, available_appliances_list, running_appliances_power, running_appliances_list):
+        """try to start appliances to use free power"""
+        alocated_power = 0
+        decisions = []
+
+        for a in available_appliances_list:
+            remaining_free_power = abs(free) - alocated_power + running_appliances_power
+            _LOGGER.debug(f"Remaining free power: {remaining_free_power} / {abs(free_power)}. Testing {a.name}")
+            if remaining_free_power < 0:
+                break
+
+            if a.type == FVE_Appliance.TYPE_CONSTANT_LOAD and a.minimal_power < remaining_free_power:
+                alocated_power = alocated_power + a.minimal_power
+                _LOGGER.debug(f"{a.name} > START")
+                decisions.append(
+                    FVE_appliance_decision(
+                        appliance_name=a.name,
+                        action="start",
+                        expected_power_ballance= a.minimal_power
+                    )
+                )
+
+            elif a.type == FVE_Appliance.TYPE_VARIABLE_LOAD and (not a.is_on) and a.minimal_power < remaining_free_power:
+                alocated_power = alocated_power + a.minimal_power
+                _LOGGER.debug(f"{a.name} > START")
+                decisions.append(
+                    FVE_appliance_decision(
+                        appliance_name=a.name,
+                        action="start",
+                        expected_power_ballance= a.minimal_power
+                    )
+                )
+
+            elif a.type == FVE_Appliance.TYPE_VARIABLE_LOAD and a.is_on and (a.maximal_power - a.actual_power) < remaining_free_power:
+                alocated_power = alocated_power + a.step_power
+                _LOGGER.debug(f"{a.name} > INCREASE")
+                decisions.append(
+                    FVE_appliance_decision(
+                        appliance_name=a.name,
+                        action="increase",
+                        expected_power_ballance= a.minimal_power
+                    )
+                )
+
+            # vypnu co je navíc
+            if alocated_power > free_power:
+                stop_decs = self.stop_appliances(alocated_power - free_power, running_appliances_list)
+                decisions = decisions + stop_decs
+
+            return decisions
+
+
+
+    def stop_appliances(self, neccessary_power, appliances_list):
+        """try to find neccesary power by stopping / minimizing power"""
+        saved_power = 0
+        decisions = []
+
+        for a in appliances_list:
+            remaining_neccessary_power = abs(neccessary_power) - saved_power
+
+            _LOGGER.debug(f"Remaining neccesary power: {remaining_neccessary_power} / {abs(neccessary_power)}. Testing {a.name}")
+            if remaining_neccessary_power < 0:
+                break
+
+            if a.type == FVE_Appliance.TYPE_CONSTANT_LOAD:
+                saved_power = saved_power + a.actual_power
+                _LOGGER.debug(f"{a.name} > STOP")
+                decisions.append(
+                    FVE_appliance_decision(
+                        appliance_name=a.name,
+                        action="stop",
+                        expected_power_ballance= 0 - a.actual_power
+                    )
+                )
+
+
+            if a.type == FVE_Appliance.TYPE_VARIABLE_LOAD:
+                if (a.actual_power - a.minimal_power) > remaining_neccessary_power:
+                    _LOGGER.debug(f"{a.name} > STOP")
+                    saved_power = saved_power + (a.actual_power - a.minimal_power)
+                    decisions.append(
+                        FVE_appliance_decision(
+                            appliance_name=a.name,
+                            action="minimum",
+                            expected_power_ballance= 0 - (a.actual_power - a.minimal_power)
+                        )
+                    )
+                else:
+                        _LOGGER.debug(f"{a.name} > STOP")
+                        saved_power = saved_power + a.actual_power
+                        decisions.append(
+                        FVE_appliance_decision(
+                            appliance_name=a.name,
+                            action="stop",
+                            expected_power_ballance= 0 - (a.actual_power)
+                        )
+                    )
+        return decisions
+
 
     def update(self, ts=None):
 
@@ -193,7 +286,7 @@ class FVE_Controler:
 
         # _LOGGER.debug(self._data)
         for appliance in sorted(self._appliances, key=lambda x: x.priority, reverse=True):
-            appstate = appliance.state
+            appliance.update()
             # _LOGGER.debug(appstate)
 
         return True
@@ -237,6 +330,27 @@ class FVE_Controler:
 
             # grid buy
             self._data["fve_free_power_maximal"] =0 - self._data[f"{NAME_GRID_POWER}_mean"]
+
+        # calculate free final free power power according to priority
+        free_power = 0
+        if int(self.extra_load_priority) == 1:
+            free_power = self._data["fve_free_power_minimal"]
+
+        if int(self.extra_load_priority) == 2:
+            free_power = (self._data["fve_free_power_minimal"] + self._data["fve_free_power_middle"]) / 2
+
+        if int(self.extra_load_priority) == 3:
+            free_power = self._data["fve_free_power_middle"]
+
+        if int(self.extra_load_priority) == 4:
+            free_power = (self._data["fve_free_power_maximal"] + self._data["fve_free_power_middle"]) / 2
+
+        if int(self.extra_load_priority) == 5:
+            free_power = self._data["fve_free_power_maximal"]
+
+        self._data["fve_free_power"] = free_power
+
+
 
         #missing wats in battery
         battery_soc = self._hass.states.get(self._config["fve_battery_soc_sensor"])

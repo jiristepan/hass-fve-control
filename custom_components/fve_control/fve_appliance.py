@@ -71,18 +71,15 @@ class FVE_Appliance:
 
     def update(self):
         """ update states from hass """
-
         # _LOGGER.debug(f"Updateting appliance {self.name}")
         #availability of the device
         if (not self.availability_sensor is None):
             s = self._hass.states.get(self.availability_sensor)
-            _LOGGER.debug(f"availability sensor:{s}")
+            # _LOGGER.debug(f"availability sensor:{s}")
             out = ((not s is None) and s.state == "on")
             self._h_availability = out
         else:
             _LOGGER.warning(f"ERROR - no availability sensor for {self.name}")
-
-
 
         #on/off state
         oldval = self._h_is_on
@@ -96,7 +93,7 @@ class FVE_Appliance:
 
         # indikace zapnuti
         if (not oldval) and self._h_is_on:
-            _LOGGER.debug(f"Virtual appliace start: {self.name}")
+            _LOGGER.debug(f"[{self.name}] appliance start - off > on detected")
             self._last_start = datetime.now()
 
         self._h_power = -1.0
@@ -107,10 +104,11 @@ class FVE_Appliance:
         elif self._h_is_on:
             self._h_power = self.minimal_power
 
-
+        # _LOGGER.debug(self.state)
 
     @property
     def is_available(self) -> bool:
+        # _LOGGER.debug(f"{self.name}.is_available = {self._h_availability}")
         return self._h_availability
 
     @property
@@ -130,13 +128,14 @@ class FVE_Appliance:
     def actual_power(self) -> float:
         return self._h_power
 
+
+
     def negotiate_free_power(self, free_power:int, running_appliances):
         """answer if this appliance can use some of free available power"""
         self.update()
         now = datetime.now().timestamp()
         actions = []
 
-        _LOGGER.debug(f"RUNNING APP {running_appliances}")
         running_appliances_power = sum(
             map(
                 lambda item: item.actual_power,
