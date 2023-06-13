@@ -555,7 +555,7 @@ class FVE_Controler:
         payload = {
             "hass_name": self._hass.config.location_name,
             "hass_location_lat": self._hass.config.latitude,
-            "hass_location_lon": self._hass.config.latitude,
+            "hass_location_lon": self._hass.config.longitude,
             "data": self._data,
         }
         headers = {"content-type": "application/json"}
@@ -574,7 +574,7 @@ class FVE_Controler:
         payload = {
             "hass_name": self._hass.config.location_name,
             "hass_location_lat": self._hass.config.latitude,
-            "hass_location_lon": self._hass.config.latitude,
+            "hass_location_lon": self._hass.config.longitude,
             "data": data,
         }
         headers = {"content-type": "application/json"}
