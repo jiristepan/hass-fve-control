@@ -137,9 +137,9 @@ Další čístí je základní nastavení systému.
 |fve_battery_max_power_out|ano| jaký je maximální výkon vybíjení baterie [W]|
 |treshold_power |ne| minimální hodnota, kdy systém zkouší něco vypínat nebo zapínat. Default: 100W [W]|
 |force_stop_power |ne| Hodnota, kdy systém vypíná bez ohledu na minimální časy běhu. Default: 1000W [W]|
-|update_interval|ne| interval update senzorů [sec]. Default 10sec|
-|decision_inte|ne| interval rozhodování o spuštění / vypnutí [sec]. Default 60sec |
-|history_in_minutes|ne|délka historie pro výpočet průměrů hodnot [min]. Default 10min|
+|update_interval_sec |ne| interval update senzorů [sec]. Default 10sec|
+|decision_interval_sec |ne| interval rozhodování o spuštění / vypnutí [sec]. Default 60sec |
+|history_in_minutes |ne |délka historie pro výpočet průměrů hodnot [min]. Default 10min|
 
 A následuje definice spotřebičů. Jsou k dispozici dva typy:
 - **constant_load** je spotřebič s neregulovatelným příkonem.

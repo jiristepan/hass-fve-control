@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 from datetime import timedelta
 
@@ -33,8 +32,8 @@ LOAD_SCHEMA = vol.Schema(
         vol.Optional("static_priority"): int,
         vol.Required("availability_sensor"): cv.entity_id,
         vol.Optional("priority_sensor"): cv.entity_id,
-        vol.Optional("minimal_running_minutes", default = 5): int,
-        vol.Optional("startup_time_minutes", default = 1): int
+        vol.Optional("minimal_running_minutes", default=5): int,
+        vol.Optional("startup_time_minutes", default=1): int,
     }
 )
 
@@ -42,48 +41,30 @@ CONFIG_SCHEMA = vol.Schema(
     {
         DOMAIN: vol.Schema(
             {
-                vol.Required(
-                    "fve_load_power_sensor"
-                ): cv.entity_id,
-                vol.Required(
-                    "fve_grid_power_sensor"
-                ): cv.entity_id,
-                vol.Required(
-                    "fve_pv_power_sensor"
-                ): cv.entity_id,
-                vol.Required(
-                    "fve_battery_power_sensor"
-                ): cv.entity_id,
-                vol.Required(
-                    "fve_battery_soc_sensor"
-                ): cv.entity_id,
-                vol.Required(
-                    "fve_battery_capacity"
-                ): int,
-                vol.Optional(
-                    "fve_battery_soc_min"
-                ): int,
-                vol.Optional(
-                    "fve_battery_max_power_in"
-                ): int,
-                vol.Optional(
-                    "fve_battery_max_power_out"
-                ): int,
+                vol.Required("fve_load_power_sensor"): cv.entity_id,
+                vol.Required("fve_grid_power_sensor"): cv.entity_id,
+                vol.Required("fve_pv_power_sensor"): cv.entity_id,
+                vol.Required("fve_battery_power_sensor"): cv.entity_id,
+                vol.Required("fve_battery_soc_sensor"): cv.entity_id,
+                vol.Required("fve_battery_capacity"): int,
+                vol.Optional("fve_battery_soc_min"): int,
+                vol.Optional("fve_battery_max_power_in"): int,
+                vol.Optional("fve_battery_max_power_out"): int,
                 vol.Optional("use_forecast_solar"): bool,
                 vol.Optional("use_openweather"): bool,
                 vol.Optional("update_interval_sec", default=10): int,
-                vol.Optional("decide_interval_sec", default=60): int,
+                vol.Optional("decision_interval_sec", default=60): int,
                 vol.Optional("history_in_minutes", default=10): int,
                 vol.Optional("appliances"): vol.All(cv.ensure_list, [LOAD_SCHEMA]),
                 vol.Optional("analytics", default=True): bool,
                 vol.Optional("treshold_power", default=100): int,
-                vol.Optional("force_stop_power", default=1000): int
-
+                vol.Optional("force_stop_power", default=1000): int,
             }
         ),
     },
     extra=vol.ALLOW_EXTRA,
 )
+
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the FVE Load Control component."""
@@ -96,22 +77,25 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     _LOGGER.debug(conf)
     hass.data.setdefault(DOMAIN, {})
 
-
     device_info = DeviceInfo(
         identifiers={(DOMAIN, "fve_controler")},
         name="FVE Control",
         manufacturer="jst",
         model="FVE Control",
-        sw_version="1.0.0"
+        sw_version="1.0.0",
     )
     fve_controler = FVE_Controler(conf, hass, device_info)
 
     hass.data[DOMAIN] = fve_controler
 
-    hass.helpers.discovery.load_platform('sensor', DOMAIN, {}, config)
-    hass.helpers.discovery.load_platform('number', DOMAIN, {}, config)
+    hass.helpers.discovery.load_platform("sensor", DOMAIN, {}, config)
+    hass.helpers.discovery.load_platform("number", DOMAIN, {}, config)
 
-    async_track_time_interval(hass, fve_controler.decide, timedelta(seconds=conf.get("decide_interval_sec")))
-    async_track_time_interval(hass, fve_controler.update, timedelta(seconds=conf.get("update_interval_sec")))
+    async_track_time_interval(
+        hass, fve_controler.decide, timedelta(seconds=conf.get("decision_interval_sec"))
+    )
+    async_track_time_interval(
+        hass, fve_controler.update, timedelta(seconds=conf.get("update_interval_sec"))
+    )
 
     return True
