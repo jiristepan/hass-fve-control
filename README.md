@@ -2,10 +2,10 @@
 
 Integrace pro řízení spotřeby domu pro minimalizaci přetoků do sítě.
 
-> Projekt je v ranné fázi vývoje. Funguje mi dobře, ale počítejte s hodně změnami. Uvítám zpětnou vazbu jak jede na vašich FVE
+> Projekt je v ranné fázi vývoje a je to moje první custom integrave pro Home Assitant, takže není krásná jak jsem se učil. Ačkoliv mi funguje dobře, berte ji jako alfa verzi. Uvítám zpětnou vazbu jak jede na vašich FVE - optimálně formou issues. 
 
 ## Motivace
-Cílem projektu je eliminovat přetoky z domácích FVE pomocí automatického řízení spotřebičů.
+
 Podívejme se na reálnou situaci ze https://solar-assistant.io. Žlutá je výkon FVE, modrá spotřeba domu, červená odběr / přetoky do sítě.
 ![](./imgs/2023-05-31-20-37-33.png)
 
@@ -13,31 +13,29 @@ V 9:40 již svítilo tolik, že začaly přetoky. Spotřeba domu byla cca. 266W.
 
 Pokud by k tomuto nedocházelo bude spotřeba vypadat stále jako cca. 200 - 300W. Někdy kolem 11.00 by se plně nabila baterie a zbytek dne by se vše vyváželo do sítě.
 
-Díky této automatizaci se mi daří dlouhodobě držet velmi vysoký podíl doma spotřebované FVE. Kolem 90% za měsíc květen.
+Díky této automatizaci se mi daří dlouhodobě držet velmi vysoký podíl doma spotřebované solární energie. Kolem 90% za měsíc květen.
 
 ![](./imgs/2023-05-31-20-46-17.png)
-
-Na základě cca. ročního hraní se spouštěním si jsem vyrobil tuto automatizaci. 
 
 
 ## Princip fungování
 
-Princip je velmi jednoduchý. Integrace si na vstupu bere informace z FVE. Spotřebu, výkon panelů, nabití baterie, nákup / prodej do sítě. Na základě těchto dat si v každý okamžik počítá kolik je výkonu navíc k dispozici. Postup je jednoduchý:
+Princip je velmi prostý. Integrace si na vstupu bere informace z FVE (v mém případě Solar Assistant, ale je to obecné). Spotřebu, výkon panelů, nabití baterie, nákup / prodej do sítě. Na základě těchto dat si v každý okamžik počítá kolik je výkonu navíc k dispozici. 
 
-Všechny veličiny si zprůměruje za posledních 10minut abyhcom se vyhli unáhlené reakci na výkyvy způsobené např. mraky apod.
+Všechny veličiny si zprůměruje za posledních 10minut abyhchom se vyhli unáhlené reakci na výkyvy způsobené např. mraky apod.
 
-Následně si spořítá **kolik je výkonu navíc**. K tomu používá tři strategie:
+Následně si spočítá **kolik je výkonu navíc**. K tomu používá tři strategie:
 
 1) **Minimální** je prostě rovna přetokům. Tedy pokud do sítě teče 500W, snaží se najít zdroj právě s touto energií a zapnout jej.
 2) **Střední** je rovna hodnotě, kdy by se vyrovnaly přetoky a současně by se zastavilo nabíjení baterie. To má reálně smysl například ráno, když slunce stoupá a očekáváme jasno. Spustí se zátěž, nabíjení baterie se na chvíli zastaví či zpomalí a pak zase postupně nabíhá.
-3) **Maximální** považuje za volný výkon navíc i vybíjecí výkon baterie. Tedy vše co máme k dispozici aby se nazačalo nakupovat z venku. 
+3) **Maximální** považuje za volný výkon navíc i vybíjecí výkon baterie. Tedy vše co máme k dispozici aby se nazačalo nakupovat z gridu. 
 
-Pokud detekujeme nějaký výkon navíc, postupně se dle priority pokouší zapnout spotřebiče dokud se hodnota extra výkonu  nesníží tak, že žádný zdroj nejde spustit. Pokud je baterie na minimu neuvažuje se.
+Pokud detekujeme nějaký výkon navíc, postupně se dle priority pokouší zapnout spotřebiče dokud se hodnota extra výkonu nesníží tak, že žádný zdroj nejde spustit. 
 
 ---
 
 ### Příklad
-Máme jen jeden zdroj a to patronu v bojleru s výkonem 2kW.
+Máme jen jeden zdroj a to patronu v bojleru s příkonem 2kW.
 Panely dávají 2500W, ale postupně se nabíjí baterie výkonem 2kW.  
 Spotřeba domu je 100W. Takže máme 400W přetoky.
 
@@ -59,7 +57,7 @@ Pokud je v systému chybějící výkon, systém zkouší vypnout spotřebiče. 
 
 A to je vše. V budoucnu plánuji zohlednit předpověď výkonu a počasí a také stav nabití baterie. Tedy trochu jinak reagovat když je baterie prázdná apod. Mám k tomu mnoho připeraveno, ale zatím ve vývojové verzi. I ten výše popsaný jednoduchý systém docela dobře funguje.
 
-Jen dodám, že integrace samotná spotřebiče nespouští. Jen posílá HomeAssistantu eventy, které je možné požít pro jejich spuštění automatizací nebo jinou reakci.
+Integrace samotná spotřebiče nespouští. Jen posílá do HomeAssistant eventy, které je možné požít pro jejich spuštění automatizací nebo jinou reakci.
 
 ## Instalace
 Instalace je nejlépo mocí HACS. Je nutné přidat toto REPO
@@ -127,7 +125,7 @@ První část definuje vstupy z FVE
 
 Pokud používáte SolarAssistant je konfigurace přesně jako na příkladu. Pokud ne je možné vyrobit virtuální senzory, které jednotky přizpůsobí.
 
-Další čístí je základní nastavení systému.
+Další částí je základní nastavení systému.
 
 | parametr | povinný |význam |
 |----------| --- |---    |
@@ -140,6 +138,7 @@ Další čístí je základní nastavení systému.
 |update_interval_sec |ne| interval update senzorů [sec]. Default 10sec|
 |decision_interval_sec |ne| interval rozhodování o spuštění / vypnutí [sec]. Default 60sec |
 |history_in_minutes |ne |délka historie pro výpočet průměrů hodnot [min]. Default 10min|
+|analytics |ne | `true` nebo `false`. Povolí zasílání dat pro statistiky. Default `true` |
 
 A následuje definice spotřebičů. Jsou k dispozici dva typy:
 - **constant_load** je spotřebič s neregulovatelným příkonem.
@@ -160,6 +159,17 @@ A následuje definice spotřebičů. Jsou k dispozici dva typy:
 |startup_time_minutes|ne| Očekávaná doba za jakou má naběhnout na plný výkon. Vhodné třeba u kryptominerů, kdy se pár minut bootuje |
 
 Jakmile toto nakonfigurujete a zrestartujete HA, měli je vše připraveno. Poznáte to dle řady nových senzorů
+
+### Analytika
+Parametr `analytics` umožní posílat data do google cloudu k další analýze. Je defaulně zapnutý. Data sbírám jen pro účely zlepšování - moje zkušenosti vycházejí jen z jedné malé FVE, takže mne zajímá jak se chovají jiné.
+
+Co analytika sbírá:
+- název home assistantu a lokaci pro rozlišení
+- ip adresu 
+- data z FVE senzorů 
+- informace o rozhodnutí vypnout / zapout spotřebič
+
+Data nikomu nepředávám a po analýze je mažu. Občas je promažu stejně.
 
 ### Příklady sensor_available
 Proč vlastně používám `availability_sensor`? Určuje, zda je vůbec danný extra spotřebič vhodný ke spuštění. Typicky se jedná o tyto kontroly:

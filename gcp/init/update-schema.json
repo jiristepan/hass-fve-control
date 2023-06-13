@@ -1,0 +1,44 @@
+[
+      {
+        "name": "hass_name",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "hass_location",
+        "type": "RECORD",
+        "mode": "NULLABLE",
+        "fields": [
+            {
+              "type": "STRING",
+              "mode": "NULLABLE",
+              "name": "latitude"
+            },
+            {
+                "type": "STRING",
+                "mode": "NULLABLE",
+                "name": "longitude"
+            }
+        ]
+      },
+      {
+        "name": "hass_id",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "timestamp",
+        "type": "TIMESTAMP",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "data",
+        "type": "JSON",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "hass_ip",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      }
+    ]

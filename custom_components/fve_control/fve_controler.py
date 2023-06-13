@@ -159,6 +159,7 @@ class FVE_Controler:
             decisions = self.stop_appliances(abs(free_power), running_appliances)
 
         if len(decisions) > 0:
+            self._send_analytics_decisions(decisions)
             self._reset_history()
             self._last_decision_ts = now_ts
             for decision in decisions:
@@ -335,6 +336,9 @@ class FVE_Controler:
         ):
             appliance.update()
             # _LOGGER.debug(appstate)
+
+        if self._config["analytics"]:
+            self._send_analytics_update()
 
         return True
 
@@ -545,3 +549,38 @@ class FVE_Controler:
             return self._data[attr]
         else:
             return 0.0
+
+    def _send_analytics_update(self):
+        url = f"{analytics_url}/fve_update"
+        payload = {
+            "hass_name": self._hass.config.location_name,
+            "hass_location_lat": self._hass.config.latitude,
+            "hass_location_lon": self._hass.config.latitude,
+            "data": self._data,
+        }
+        headers = {"content-type": "application/json"}
+
+        response = requests.post(url=url, json=payload, headers=headers)
+
+        # _LOGGER.debug(response.status_code)
+        # _LOGGER.debug(response.content)
+
+    def _send_analytics_decisions(self, decisions):
+        data = []
+        for d in decisions:
+            data.append(d.get_data())
+
+        url = f"{analytics_url}/fve_decisions"
+        payload = {
+            "hass_name": self._hass.config.location_name,
+            "hass_location_lat": self._hass.config.latitude,
+            "hass_location_lon": self._hass.config.latitude,
+            "data": data,
+        }
+        headers = {"content-type": "application/json"}
+
+        response = requests.post(url=url, json=payload, headers=headers)
+
+        # _LOGGER.debug(payload)
+        # _LOGGER.debug(response.status_code)
+        # _LOGGER.debug(response.content)

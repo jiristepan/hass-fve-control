@@ -33,8 +33,7 @@ LOAD_SCHEMA = vol.Schema(
         vol.Required("availability_sensor"): cv.entity_id,
         vol.Optional("priority_sensor"): cv.entity_id,
         vol.Optional("minimal_running_minutes", default=5): int,
-        vol.Optional("startup_time_minutes", default=1): int,
-    }
+        vol.Optional("startup_time_minutes", default=1): int    }
 )
 
 CONFIG_SCHEMA = vol.Schema(
