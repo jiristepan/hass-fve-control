@@ -33,7 +33,7 @@ def fve_update(request):
         {
             "hass_id": hass_id,
             "hass_name": hass_name,
-            "hass_ip": hass_ip,
+            "hass_ip": _get_ip(request),
             "hass_location": {
                 "latitude": hass_location_lat,
                 "longitude": hass_location_lon,
@@ -84,7 +84,7 @@ def fve_decisions(request):
         {
             "hass_id": hass_id,
             "hass_name": hass_name,
-            "hass_ip": hass_ip,
+            "hass_ip": _get_ip(request),
             "hass_location": {
                 "latitude": hass_location_lat,
                 "longitude": hass_location_lon,
@@ -99,3 +99,10 @@ def fve_decisions(request):
         return "OK"
     else:
         return f"Error inserting data into BigQuery: {errors}", 500
+
+
+def _get_ip(request):
+    if request.environ.get('HTTP_X_FORWARDED_FOR') is None:
+        return request.environ['REMOTE_ADDR']
+    else:
+        return request.environ['HTTP_X_FORWARDED_FOR']

@@ -1,6 +1,7 @@
 from time import time
 from datetime import datetime
 
+
 class FVE_appliance_decision:
     """
     Simple class representing FVE controled appliance decision
@@ -8,6 +9,7 @@ class FVE_appliance_decision:
      - action: on, off, increase, decrease, maximum, minimum
      - appliance_name
     """
+
     timestamp = None
     action = ""
     appliance_name = ""
@@ -23,21 +25,22 @@ class FVE_appliance_decision:
     ACTION_MAXIMUM = "maximum"
     ACTION_MINIMUM = "minimum"
 
-
-    def __init__(self, appliance_name, action,
-                 expected_power_ballance = None,
-                 actual_free_power=None,
-                 expected_maturity_sec=60) -> None:
+    def __init__(
+        self,
+        appliance_name,
+        action,
+        expected_power_ballance=None,
+        actual_free_power=None,
+        expected_maturity_sec=60,
+    ) -> None:
         self.timestamp = time()
         self.action = action
         self.appliance_name = appliance_name
         self.expected_power_ballance = expected_power_ballance
-        self.expected_maturity_timestamp = datetime.now().timestamp()+expected_maturity_sec
+        self.expected_maturity_timestamp = (
+            datetime.now().timestamp() + expected_maturity_sec
+        )
 
     def get_data(self):
-        out = {
-            "appliance_name" : self.appliance_name,
-            "action"         : self.action
-        }
+        out = {"appliance_name": self.appliance_name, "action": self.action}
         return out
-
