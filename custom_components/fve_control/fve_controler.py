@@ -176,7 +176,10 @@ class FVE_Controler:
                 )
 
         if free_power < 0 - self._config["treshold_power"]:
-            decisions = self.stop_appliances(abs(free_power), running_appliances)
+            force = free_power <= self._config["force_stop_power"]
+            decisions = self.stop_appliances(
+                abs(free_power), running_appliances, force_stop=force
+            )
 
         if len(decisions) > 0:
             self._send_analytics_decisions(decisions)
@@ -322,7 +325,7 @@ class FVE_Controler:
 
         return decisions
 
-    def stop_appliances(self, neccessary_power, appliances_list):
+    def stop_appliances(self, neccessary_power, appliances_list, force_stop=False):
         """try to find neccesary power by stopping / minimizing power"""
         saved_power = 0
         decisions = []
@@ -336,7 +339,10 @@ class FVE_Controler:
             if remaining_neccessary_power < 0:
                 break
 
-            if a.type == FVE_Appliance.TYPE_CONSTANT_LOAD:
+            # stop if runing long enough
+            if a.type == FVE_Appliance.TYPE_CONSTANT_LOAD and (
+                a.is_running_long_enought or force_stop
+            ):
                 _LOGGER.debug("stoping constant")
                 saved_power = saved_power + a.actual_power
                 _LOGGER.debug(f"{a.name} > STOP")
@@ -350,6 +356,7 @@ class FVE_Controler:
 
             if a.type == FVE_Appliance.TYPE_VARIABLE_LOAD:
                 _LOGGER.debug("testing variable load")
+                # always minimize variable load
                 if (a.actual_power - a.minimal_power) > remaining_neccessary_power:
                     _LOGGER.debug(f"{a.name} > MINIMAL")
                     saved_power = saved_power + (a.actual_power - a.minimal_power)
@@ -361,7 +368,8 @@ class FVE_Controler:
                             - (a.actual_power - a.minimal_power),
                         )
                     )
-                else:
+                # or stop in case it runs long enough
+                elif a.is_running_long_enought or force:
                     _LOGGER.debug(f"{a.name} > STOP")
                     saved_power = saved_power + a.actual_power
                     decisions.append(

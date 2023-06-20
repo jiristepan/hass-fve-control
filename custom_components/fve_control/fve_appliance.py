@@ -89,7 +89,7 @@ class FVE_Appliance:
         if not self.actual_switch_sensor is None:
             state = self._hass.states.get(self.actual_switch_sensor)
             if not state is None:
-                self._h_is_on = state.state == "on"
+                self._h_is_on = state.state != "off" #this is because clima devices where on == cool etc.
         elif self._h_power > 1.0:
             self._h_is_on = True
 
@@ -130,6 +130,10 @@ class FVE_Appliance:
             return 0
 
         return (now - self._last_start.timestamp()) / 60
+
+    @property 
+    def is_running_long_enought(self):
+        return self.actual_running_time_minutes >= self.minimal_running_time
 
     @property
     def is_on(self) -> bool:
