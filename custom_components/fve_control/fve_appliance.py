@@ -83,14 +83,36 @@ class FVE_Appliance:
         else:
             _LOGGER.warning(f"ERROR - no availability sensor for {self.name}")
 
+        self._h_power = -1.0
+        if not self.actual_power_sensor is None:
+            state = self._hass.states.get(self.actual_power_sensor)
+            if (
+                not state is None
+                and state.state != "unknown"
+                and state.state != "unavailable"
+            ):
+                self._h_power = float(state.state)
+        elif self._h_is_on:
+            self._h_power = self.minimal_power
+
         # on/off state
         oldval = self._h_is_on
         self._h_is_on = False
         if not self.actual_switch_sensor is None:
+            # _LOGGER.debug(
+            #     f"ON : self.actual_switch_sensor : {self.actual_switch_sensor}"
+            # )
             state = self._hass.states.get(self.actual_switch_sensor)
+            # _LOGGER.debug(f"ON state : {state}")
             if not state is None:
-                self._h_is_on = (state.state != "off") and (state.state != "unavailable") and (state.state != "unknown") #this is because clima devices where on == cool etc.
+                # _LOGGER.debug(f"ON state.state: {self.name} : {state.state}")
+                self._h_is_on = (
+                    (state.state != "off")
+                    and (state.state != "unavailable")
+                    and (state.state != "unknown")
+                )  # this is because clima devices where on == cool etc.
         elif self._h_power > 1.0:
+            # _LOGGER.debug(f"ON : based on power {self._h_power}")
             self._h_is_on = True
 
         # indikace zapnuti
@@ -104,19 +126,7 @@ class FVE_Appliance:
             _LOGGER.debug(f"[{self.name}] appliance stop - on > off detected")
             self._controler.reset_history()
 
-        self._h_power = -1.0
-        if not self.actual_power_sensor is None:
-            state = self._hass.states.get(self.actual_power_sensor)
-            if (
-                not state is None
-                and state.state != "unknown"
-                and state.state != "unavailable"
-            ):
-                self._h_power = float(state.state)
-        elif self._h_is_on:
-            self._h_power = self.minimal_power
-
-        # _LOGGER.debug(self.state)
+        _LOGGER.debug(self.state)
 
     @property
     def is_available(self) -> bool:
@@ -131,7 +141,7 @@ class FVE_Appliance:
 
         return (now - self._last_start.timestamp()) / 60
 
-    @property 
+    @property
     def is_running_long_enought(self):
         return self.actual_running_time_minutes >= self.minimal_running_time
 
