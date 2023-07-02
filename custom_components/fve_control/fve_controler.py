@@ -243,12 +243,14 @@ class FVE_Controler:
             if len(decisions) > 0:
                 break
 
-        # vypnu co je navíc
-        if alocated_power > free_power:
-            stop_decs = self.stop_appliances(
-                alocated_power - free_power, lower_priority_running_appliances_list
-            )
-            decisions = decisions + stop_decs
+            # vypnu co je navíc
+            if alocated_power > free_power:
+                stop_decs = self.stop_appliances(
+                    alocated_power - free_power,
+                    lower_priority_running_appliances_list,
+                    False,
+                )
+                decisions = decisions + stop_decs
 
         return decisions
 
@@ -319,7 +321,9 @@ class FVE_Controler:
         # vypnu co je navíc
         if alocated_power > free_power:
             stop_decs = self.stop_appliances(
-                alocated_power - free_power, lower_priority_running_appliances_list
+                alocated_power - free_power,
+                lower_priority_running_appliances_list,
+                False,
             )
             decisions = decisions + stop_decs
 
@@ -369,7 +373,7 @@ class FVE_Controler:
                         )
                     )
                 # or stop in case it runs long enough
-                elif a.is_running_long_enought or force:
+                elif a.is_running_long_enought or force_stop:
                     _LOGGER.debug(f"{a.name} > STOP")
                     saved_power = saved_power + a.actual_power
                     decisions.append(
