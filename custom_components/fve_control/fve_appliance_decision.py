@@ -13,6 +13,7 @@ class FVE_appliance_decision:
     timestamp = None
     action = ""
     appliance_name = ""
+    appliance = None
     expected_power_change = None
     expected_final_load_power = None
     expected_maturity_timestamp = None
@@ -27,7 +28,7 @@ class FVE_appliance_decision:
 
     def __init__(
         self,
-        appliance_name,
+        appliance,
         action,
         expected_power_ballance=None,
         actual_free_power=None,
@@ -35,7 +36,8 @@ class FVE_appliance_decision:
     ) -> None:
         self.timestamp = time()
         self.action = action
-        self.appliance_name = appliance_name
+        self.appliance_name = appliance.name
+        self.appliance = appliance
         self.expected_power_ballance = expected_power_ballance
         self.expected_maturity_timestamp = (
             datetime.now().timestamp() + expected_maturity_sec

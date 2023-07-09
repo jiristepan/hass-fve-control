@@ -187,8 +187,16 @@ class FVE_Controler:
             self._next_decision_ts = max(
                 map(lambda x: x.expected_maturity_timestamp, decisions)
             )
+
             for decision in decisions:
                 _LOGGER.debug(f"Firing FVE decision: {decision.get_data()}")
+
+                # set asumed state and last decision
+                if decision.action == "stop":
+                    decision.appliance.stop_appliance(decision)
+                else:
+                    decision.appliance.start_appliance(decision)
+
                 self._hass.bus.fire("fve_control", decision.get_data())
 
         return True
@@ -233,15 +241,12 @@ class FVE_Controler:
                 _LOGGER.debug(f"{a.name} > INCREASE")
                 decisions.append(
                     FVE_appliance_decision(
-                        appliance_name=a.name,
+                        appliance=a,
                         action="increase",
                         expected_power_ballance=a.step_power,
                         expected_maturity_sec=a.startup_time_minutes * 60,
                     )
                 )
-
-            if len(decisions) > 0:
-                break
 
             # vypnu co je navíc
             if alocated_power > free_power:
@@ -292,7 +297,7 @@ class FVE_Controler:
                 _LOGGER.debug(f"{a.name} > START")
                 decisions.append(
                     FVE_appliance_decision(
-                        appliance_name=a.name,
+                        appliance=a,
                         action="start",
                         expected_power_ballance=a.minimal_power,
                         expected_maturity_sec=a.startup_time_minutes * 60,
@@ -308,15 +313,12 @@ class FVE_Controler:
                 _LOGGER.debug(f"{a.name} > START")
                 decisions.append(
                     FVE_appliance_decision(
-                        appliance_name=a.name,
+                        appliance=a,
                         action="start",
                         expected_power_ballance=a.minimal_power,
                         expected_maturity_sec=a.startup_time_minutes * 60,
                     )
                 )
-
-            if len(decisions) > 0:
-                break
 
         # vypnu co je navíc
         if alocated_power > free_power:
@@ -352,7 +354,7 @@ class FVE_Controler:
                 _LOGGER.debug(f"{a.name} > STOP")
                 decisions.append(
                     FVE_appliance_decision(
-                        appliance_name=a.name,
+                        appliance=a,
                         action="stop",
                         expected_power_ballance=0 - a.actual_power,
                     )
@@ -366,7 +368,7 @@ class FVE_Controler:
                     saved_power = saved_power + (a.actual_power - a.minimal_power)
                     decisions.append(
                         FVE_appliance_decision(
-                            appliance_name=a.name,
+                            appliance=a,
                             action="minimum",
                             expected_power_ballance=0
                             - (a.actual_power - a.minimal_power),
@@ -378,7 +380,7 @@ class FVE_Controler:
                     saved_power = saved_power + a.actual_power
                     decisions.append(
                         FVE_appliance_decision(
-                            appliance_name=a.name,
+                            appliance=a,
                             action="stop",
                             expected_power_ballance=0 - (a.actual_power),
                         )

@@ -26,8 +26,9 @@ class FVE_Appliance:
     startup_time_minutes = 0
     priority = 0  # TODO: make dynamic priority
 
-    _last_decision = None
-    _last_start = None
+    _last_decision = None  # last decision event. The whole structure - not used yet
+    _last_decision_dt = None  # datetime of the last decision
+    _last_start = None  # tdatetime of the last start
 
     _assumed_state = "off"
     _assumed_load = 0.0
@@ -54,6 +55,16 @@ class FVE_Appliance:
 
         self._hass = hass
 
+    def start_appliance(self, decision):
+        self._last_decision = decision
+        self._assumed_state = "on"
+        self._last_decision_dt = datetime.now()
+
+    def stop_appliance(self, decision):
+        self._last_decision = decision
+        self._assumed_state = "off"
+        self._last_decision_dt = datetime.now()
+
     @property
     def state(self):
         out = {
@@ -61,7 +72,7 @@ class FVE_Appliance:
             "type": self.type,
             "expected_state": self._assumed_state,
             "expected_energy": self._assumed_load,
-            "last_decision": self._last_decision,
+            "last_decision_timestamp": self._last_decision_timestamp,
             "last_start": self._last_start,
             "is_available": self.is_available,
             "is_on": self.is_on,
@@ -126,12 +137,27 @@ class FVE_Appliance:
             _LOGGER.debug(f"[{self.name}] appliance stop - on > off detected")
             self._controler.reset_history()
 
-        _LOGGER.debug(self.state)
+        # _LOGGER.debug(self.state)
 
     @property
     def is_available(self) -> bool:
-        # _LOGGER.debug(f"{self.name}.is_available = {self._h_availability}")
-        return self._h_availability
+        """is this appliance ready for start? It is if availability sensor is ok and last decision from start takes some time"""
+
+        if self._last_decision_dt is None:
+            sec_from_last_decision = 60 * 1000
+        else:
+            sec_from_last_decision = (
+                datetime.now().timestamp() - self._last_decision_dt.timestamp()
+            )
+
+        # _LOGGER.debug(
+        #     f"[{self.name}][is_available] self._h_availability: {self._h_availability}, asumed state: {self._assumed_state}, sec_from_last_decision: {sec_from_last_decision} "
+        # )
+        return self._h_availability and (
+            sec_from_last_decision
+            >= self.startup_time_minutes * 60 * 5  # TODO - some better constant.
+            or self._assumed_state == "off"
+        )
 
     @property
     def actual_running_time_minutes(self) -> int:
