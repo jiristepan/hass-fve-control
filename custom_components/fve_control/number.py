@@ -1,11 +1,12 @@
 """Platform for number integration."""
+
 from __future__ import annotations
 
 import logging
 
 from homeassistant.components.number import NumberEntity
-from homeassistant.const import ELECTRIC_CURRENT_AMPERE, EntityCategory
-from homeassistant.core import HomeAssistant
+from homeassistant.const import  EntityCategory
+
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
@@ -21,26 +22,24 @@ async def async_setup_platform(
     hass: HomeAssistantType,
     config: ConfigType,
     async_add_entities: Callable,
-    discovery_info = None,
+    discovery_info=None,
 ) -> None:
     """Set up the FVE CONTROL sensors platform."""
 
     fve_controler = hass.data[DOMAIN]
 
-    entities = [
-        FVEExtraLoadPriority(fve_controler)
-    ]
+    entities = [FVEExtraLoadPriority(fve_controler)]
     async_add_entities(entities, True)
 
 
 class FVEExtraLoadPriority(NumberEntity):
     """
-        Representation the priority of extra load
-        1: very conservative. Takes only free_power_minimum
-        2: conservative takes takes only free_power_minimum + 50% battery load
-        3: takes free_power_middle = free_power_minimum + 50% battery load
-        4: takes -grid + 1/2 maximim battery current out
-        5: greedy takes -grid + maximim battery current out
+    Representation the priority of extra load
+    1: very conservative. Takes only free_power_minimum
+    2: conservative takes takes only free_power_minimum + 50% battery load
+    3: takes free_power_middle = free_power_minimum + 50% battery load
+    4: takes -grid + 1/2 maximim battery current out
+    5: greedy takes -grid + maximim battery current out
 
     """
 

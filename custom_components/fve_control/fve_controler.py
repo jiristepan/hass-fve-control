@@ -647,7 +647,11 @@ class FVE_Controler:
         }
         headers = {"content-type": "application/json"}
 
-        response = requests.post(url=url, json=payload, headers=headers)
+        try:
+            response = requests.post(url=url, json=payload, headers=headers)
+        except requests.exceptions.RequestException as e:
+            _LOGGER.error(f"Error sending analytics data: {e}")
+            return
 
         # _LOGGER.debug(response.status_code)
         # _LOGGER.debug(response.content)

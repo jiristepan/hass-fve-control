@@ -9,6 +9,8 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.discovery import async_load_platform
+
 
 from .const import DOMAIN
 from .fve_controler import FVE_Controler
@@ -33,7 +35,8 @@ LOAD_SCHEMA = vol.Schema(
         vol.Required("availability_sensor"): cv.entity_id,
         vol.Optional("priority_sensor"): cv.entity_id,
         vol.Optional("minimal_running_minutes", default=5): int,
-        vol.Optional("startup_time_minutes", default=1): int    }
+        vol.Optional("startup_time_minutes", default=1): int,
+    }
 )
 
 CONFIG_SCHEMA = vol.Schema(
@@ -49,8 +52,8 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Optional("fve_battery_soc_min"): int,
                 vol.Optional("fve_battery_max_power_in"): int,
                 vol.Optional("fve_battery_max_power_out"): int,
-                vol.Optional("use_forecast_solar"): bool,
-                vol.Optional("use_openweather"): bool,
+                vol.Optional("use_forecast_solar", default=False): bool,
+                vol.Optional("use_openweather", default=False): bool,
                 vol.Optional("update_interval_sec", default=10): int,
                 vol.Optional("decision_interval_sec", default=60): int,
                 vol.Optional("history_in_minutes", default=10): int,
@@ -87,8 +90,9 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
     hass.data[DOMAIN] = fve_controler
 
-    hass.helpers.discovery.load_platform("sensor", DOMAIN, {}, config)
-    hass.helpers.discovery.load_platform("number", DOMAIN, {}, config)
+    # Use async_load_platform instead of hass.helpers.discovery.load_platform
+    await async_load_platform(hass, "sensor", DOMAIN, {}, config)
+    await async_load_platform(hass, "number", DOMAIN, {}, config)
 
     async_track_time_interval(
         hass, fve_controler.decide, timedelta(seconds=conf.get("decision_interval_sec"))
