@@ -15,7 +15,8 @@ from homeassistant.const import *
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.config_validation import PLATFORM_SCHEMA_BASE
 from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers.typing import ConfigType, HomeAssistantType
+from homeassistant.helpers.typing import ConfigType
+from homeassistant.core import HomeAssistant
 from typing import Any, Callable, Dict, Optional
 from homeassistant.const import UnitOfPower, UnitOfEnergy
 
@@ -26,7 +27,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_platform(
-    hass: HomeAssistantType,
+    hass: HomeAssistant,
     config: ConfigType,
     async_add_entities: Callable,
     discovery_info=None,

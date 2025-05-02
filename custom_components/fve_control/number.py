@@ -5,11 +5,12 @@ from __future__ import annotations
 import logging
 
 from homeassistant.components.number import NumberEntity
-from homeassistant.const import  EntityCategory
+from homeassistant.const import EntityCategory
 
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers.typing import ConfigType, HomeAssistantType
+from homeassistant.helpers.typing import ConfigType
+from homeassistant.core import HomeAssistant
 from typing import Callable
 
 
@@ -19,7 +20,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_platform(
-    hass: HomeAssistantType,
+    hass: HomeAssistant,
     config: ConfigType,
     async_add_entities: Callable,
     discovery_info=None,

@@ -1,4 +1,4 @@
-""" Representation of extra load appliance """
+"""Representation of extra load appliance"""
 
 from datetime import datetime
 import logging

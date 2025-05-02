@@ -5,7 +5,14 @@ import pytz
 import requests
 
 from homeassistant.core import HomeAssistant
-from .const import *
+from .const import (
+    NAME_PV_POWER,
+    NAME_GRID_POWER,
+    NAME_LOAD_POWER,
+    NAME_BATTERY_SOC,
+    NAME_BATTERY_POWER,
+    analytics_url,
+)
 from .fve_appliance import FVE_Appliance
 from .fve_appliance_decision import FVE_appliance_decision
 
@@ -271,9 +278,12 @@ class FVE_Controler:
         decisions = []
 
         for a in available_appliances_list:
+            lower_priority_running_appliances_list = []
             lower_priority_running_appliances_list = list(
                 filter(lambda ap: ap.priority < a.priority, running_appliances_list)
             )
+
+            lower_priority_running_appliances_power = 0
             lower_priority_running_appliances_power = sum(
                 [ap.actual_power for ap in lower_priority_running_appliances_list]
             )
