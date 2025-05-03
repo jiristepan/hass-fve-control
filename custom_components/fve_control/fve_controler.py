@@ -550,8 +550,8 @@ class FVE_Controler:
                 elif battery_power_mean <= 0:
                     self._data["hours_to_full_battery"] = 24.0
                 else:
-                    self._data["hours_to_full_battery"] = (
-                        battery_gap / battery_power_mean
+                    self._data["hours_to_full_battery"] = min(
+                        battery_gap / battery_power_mean, 24.0
                     )
             except ValueError:
                 _LOGGER.warning("Battery calculations failed for ValueError")
