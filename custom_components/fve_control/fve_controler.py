@@ -135,7 +135,13 @@ class FVE_Controler:
 
         free_power = self._data["fve_free_power"]
 
+        # debug appliances
+        for appliance in self._appliances:
+            appliance.print_state()
+
         decisions = []
+
+        # if free_power > self._config["treshold_power"]:
 
         running_appliances = list(
             filter(
@@ -276,9 +282,9 @@ class FVE_Controler:
         """try to start appliances to use free power"""
         alocated_power = 0
         decisions = []
+        lower_priority_running_appliances_list = []
 
         for a in available_appliances_list:
-            lower_priority_running_appliances_list = []
             lower_priority_running_appliances_list = list(
                 filter(lambda ap: ap.priority < a.priority, running_appliances_list)
             )
@@ -526,6 +532,9 @@ class FVE_Controler:
 
         # missing wats in battery
         battery_soc = self._hass.states.get(self._config["fve_battery_soc_sensor"])
+        battery_soc_value = float(
+            self._hass.states.get(self._config["fve_battery_soc_sensor"]).state
+        )
         if not battery_soc is None:
             try:
                 self._data["battery_gap"] = (
@@ -545,7 +554,11 @@ class FVE_Controler:
                 battery_power_mean = self._data["battery_power_mean"]
                 battery_gap = self._data["battery_gap"]
 
-                if battery_power_mean >= 99:
+                # _LOGGER.debug(
+                #     f"Battery gap: {battery_gap}, battery power mean: {battery_power_mean}"
+                # )
+
+                if battery_soc_value >= 99:
                     self._data["hours_to_full_battery"] = 0.0
                 elif battery_power_mean <= 0:
                     self._data["hours_to_full_battery"] = 24.0
@@ -553,6 +566,7 @@ class FVE_Controler:
                     self._data["hours_to_full_battery"] = min(
                         battery_gap / battery_power_mean, 24.0
                     )
+
             except ValueError:
                 _LOGGER.warning("Battery calculations failed for ValueError")
 

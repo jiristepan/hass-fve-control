@@ -52,6 +52,7 @@ class FVE_Appliance:
         self._h_availability = False
         self._h_power = -1.0
         self._h_is_on = False
+        self._last_decision_timestamp = None
 
         self._hass = hass
 
@@ -64,6 +65,10 @@ class FVE_Appliance:
         self._last_decision = decision
         self._assumed_state = "off"
         self._last_decision_dt = datetime.now()
+
+    def print_state(self):
+        """print state of the appliance"""
+        _LOGGER.debug(f"[{self.name}] appliance state: {self.state}")
 
     @property
     def state(self):
@@ -89,7 +94,10 @@ class FVE_Appliance:
         if not self.availability_sensor is None:
             s = self._hass.states.get(self.availability_sensor)
             # _LOGGER.debug(f"availability sensor:{s}")
-            out = (not s is None) and s.state == "on"
+            # _LOGGER.debug(f"availability sensor state:{s.state}")
+            out = (not s is None) and (
+                s.state == "on" or s.state == "true" or s.state == True
+            )
             self._h_availability = out
         else:
             _LOGGER.warning(f"ERROR - no availability sensor for {self.name}")
