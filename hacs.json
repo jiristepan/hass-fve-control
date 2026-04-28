@@ -1,5 +1,5 @@
 {
   "name": "FVE Load Control",
   "render_readme": true,
-  "iot_class": "calculated"
+  "homeassistant": "2025.1.0"
 }

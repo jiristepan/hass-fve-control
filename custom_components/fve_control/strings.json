@@ -1,0 +1,64 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "FVE Control Setup",
+        "description": "Configure your solar (FVE) system sensors and battery parameters.",
+        "data": {
+          "fve_pv_power_sensor": "PV power sensor",
+          "fve_grid_power_sensor": "Grid power sensor (positive = buying, negative = exporting)",
+          "fve_load_power_sensor": "House load power sensor",
+          "fve_battery_power_sensor": "Battery power sensor (positive = charging, negative = discharging)",
+          "fve_battery_soc_sensor": "Battery state of charge sensor",
+          "fve_battery_capacity": "Battery capacity",
+          "fve_battery_soc_min": "Minimum battery SoC (don't discharge below this)",
+          "fve_battery_max_power_in": "Maximum battery charge power",
+          "fve_battery_max_power_out": "Maximum battery discharge power"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "FVE Control is already configured"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "FVE Control Options",
+        "data": {
+          "update_interval_sec": "Sensor update interval",
+          "decision_interval_sec": "Decision interval",
+          "max_history_in_minutes": "Statistics rolling window",
+          "treshold_power": "Minimum power threshold for decisions",
+          "force_stop_power": "Force stop power threshold",
+          "analytics": "Send anonymous analytics"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "pv_power_mean": { "name": "PV power mean" },
+      "pv_power_stderr": { "name": "PV power stderr" },
+      "grid_power_mean": { "name": "Grid power mean" },
+      "load_power_mean": { "name": "Load power mean" },
+      "battery_power_mean": { "name": "Battery power mean" },
+      "battery_soc_mean": { "name": "Battery SoC mean" },
+      "free_power": { "name": "Free power for decision" },
+      "free_power_minimal": { "name": "Free power minimal" },
+      "free_power_maximal": { "name": "Free power maximal" },
+      "free_power_middle": { "name": "Free power middle" },
+      "battery_gap": { "name": "Energy to full battery" },
+      "hours_to_full_battery": { "name": "Hours to full battery" },
+      "hours_to_fve_start": { "name": "Hours to sunrise" },
+      "hours_to_fve_stop": { "name": "Hours to sunset" },
+      "hours_to_fve_max": { "name": "Hours to solar noon" },
+      "fve_phase": { "name": "Solar production phase" },
+      "running_appliances_names": { "name": "Running appliances" },
+      "running_appliances_power": { "name": "Running appliances power" }
+    },
+    "number": {
+      "extra_load_priority": { "name": "Extra load priority" }
+    }
+  }
+}

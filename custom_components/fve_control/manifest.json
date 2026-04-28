@@ -1,11 +1,12 @@
 {
   "codeowners": ["@jiristepan"],
-  "config_flow": false,
+  "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/jiristepan/hass-fve-control",
+  "issue_tracker": "https://github.com/jiristepan/hass-fve-control/issues",
   "domain": "fve_control",
   "iot_class": "calculated",
   "name": "FVE Load Control",
-  "requirements": ["requests"],
-  "version": "0.3.1"
+  "requirements": [],
+  "version": "0.5.0"
 }

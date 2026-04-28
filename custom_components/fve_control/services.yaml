@@ -1,0 +1,21 @@
+set_priority:
+  name: Set extra load priority
+  description: Set the aggressiveness level for extra load decisions (1=conservative, 5=aggressive).
+  fields:
+    priority:
+      name: Priority
+      description: Priority level 1-5
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 5
+          step: 1
+
+force_decide:
+  name: Force decision
+  description: Trigger an immediate decision cycle regardless of the normal interval.
+
+reset_history:
+  name: Reset history
+  description: Clear the rolling statistics history and start fresh.

@@ -3,314 +3,245 @@
 from __future__ import annotations
 
 import logging
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
+    SensorEntityDescription,
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import *
+from homeassistant.const import PERCENTAGE, UnitOfEnergy, UnitOfPower
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.config_validation import PLATFORM_SCHEMA_BASE
-from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers.typing import ConfigType
-from homeassistant.core import HomeAssistant
-from typing import Any, Callable, Dict, Optional
-from homeassistant.const import UnitOfPower, UnitOfEnergy
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-
-from .const import DOMAIN
+from .coordinator import FveDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_platform(
+@dataclass(frozen=True, kw_only=True)
+class FveControlSensorDescription(SensorEntityDescription):
+    """Describes an FVE Control sensor."""
+
+    value_fn: Callable[[dict[str, Any]], float | str | None]
+    value_type: str = "float"
+
+
+SENSOR_DESCRIPTIONS: tuple[FveControlSensorDescription, ...] = (
+    FveControlSensorDescription(
+        key="pv_power_mean",
+        translation_key="pv_power_mean",
+        name="FVE Control: PV power mean",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfPower.WATT,
+        suggested_display_precision=0,
+        value_fn=lambda data: data.get("pv_power_mean"),
+    ),
+    FveControlSensorDescription(
+        key="pv_power_stderr",
+        translation_key="pv_power_stderr",
+        name="FVE Control: PV power stderr",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfPower.WATT,
+        suggested_display_precision=0,
+        value_fn=lambda data: data.get("pv_power_stderr"),
+    ),
+    FveControlSensorDescription(
+        key="grid_power_mean",
+        translation_key="grid_power_mean",
+        name="FVE Control: grid power mean",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfPower.WATT,
+        suggested_display_precision=0,
+        value_fn=lambda data: data.get("grid_power_mean"),
+    ),
+    FveControlSensorDescription(
+        key="load_power_mean",
+        translation_key="load_power_mean",
+        name="FVE Control: load power mean",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfPower.WATT,
+        suggested_display_precision=0,
+        value_fn=lambda data: data.get("load_power_mean"),
+    ),
+    FveControlSensorDescription(
+        key="battery_power_mean",
+        translation_key="battery_power_mean",
+        name="FVE Control: battery power mean",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfPower.WATT,
+        suggested_display_precision=0,
+        value_fn=lambda data: data.get("battery_power_mean"),
+    ),
+    FveControlSensorDescription(
+        key="battery_soc_mean",
+        translation_key="battery_soc_mean",
+        name="FVE Control: battery SOC mean",
+        device_class=SensorDeviceClass.BATTERY,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=PERCENTAGE,
+        suggested_display_precision=1,
+        value_fn=lambda data: data.get("battery_soc_mean"),
+    ),
+    FveControlSensorDescription(
+        key="free_power",
+        translation_key="free_power",
+        name="FVE Control: free power for decision",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfPower.WATT,
+        suggested_display_precision=0,
+        value_fn=lambda data: data.get("fve_free_power"),
+    ),
+    FveControlSensorDescription(
+        key="free_power_minimal",
+        translation_key="free_power_minimal",
+        name="FVE Control: free power minimal",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfPower.WATT,
+        suggested_display_precision=0,
+        value_fn=lambda data: data.get("fve_free_power_minimal"),
+    ),
+    FveControlSensorDescription(
+        key="free_power_maximal",
+        translation_key="free_power_maximal",
+        name="FVE Control: free power maximal",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfPower.WATT,
+        suggested_display_precision=0,
+        value_fn=lambda data: data.get("fve_free_power_maximal"),
+    ),
+    FveControlSensorDescription(
+        key="free_power_middle",
+        translation_key="free_power_middle",
+        name="FVE Control: free power middle",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfPower.WATT,
+        suggested_display_precision=0,
+        value_fn=lambda data: data.get("fve_free_power_middle"),
+    ),
+    FveControlSensorDescription(
+        key="battery_gap",
+        translation_key="battery_gap",
+        name="FVE Control: watts to full battery",
+        device_class=SensorDeviceClass.ENERGY,
+        native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
+        suggested_display_precision=0,
+        value_fn=lambda data: data.get("battery_gap"),
+    ),
+    FveControlSensorDescription(
+        key="hours_to_full_battery",
+        translation_key="hours_to_full_battery",
+        name="FVE Control: hours to full battery",
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        value_fn=lambda data: data.get("hours_to_full_battery"),
+    ),
+    FveControlSensorDescription(
+        key="hours_to_fve_start",
+        translation_key="hours_to_fve_start",
+        name="FVE Control: hours to start FVE at sun rising",
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        value_fn=lambda data: data.get("hours_to_fve_start"),
+    ),
+    FveControlSensorDescription(
+        key="hours_to_fve_stop",
+        translation_key="hours_to_fve_stop",
+        name="FVE Control: hours to FVE stop at sun setting",
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        value_fn=lambda data: data.get("hours_to_fve_stop"),
+    ),
+    FveControlSensorDescription(
+        key="hours_to_fve_max",
+        translation_key="hours_to_fve_max",
+        name="FVE Control: hours to FVE max at noon",
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        value_fn=lambda data: data.get("hours_to_fve_max"),
+    ),
+    FveControlSensorDescription(
+        key="fve_phase",
+        translation_key="fve_phase",
+        name="FVE Control: phase of FVE production",
+        device_class=SensorDeviceClass.ENUM,
+        options=["night", "start", "maximum", "finish", "lowsun"],
+        value_fn=lambda data: data.get("fve_phase"),
+        value_type="str",
+    ),
+    FveControlSensorDescription(
+        key="running_appliances_names",
+        translation_key="running_appliances_names",
+        name="FVE Control: running appliances",
+        value_fn=lambda data: data.get("running_appliances_names"),
+        value_type="str",
+    ),
+    FveControlSensorDescription(
+        key="running_appliances_power",
+        translation_key="running_appliances_power",
+        name="FVE Control: running appliances power",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfPower.WATT,
+        suggested_display_precision=0,
+        value_fn=lambda data: data.get("running_appliances_power"),
+    ),
+)
+
+
+async def async_setup_entry(
     hass: HomeAssistant,
-    config: ConfigType,
-    async_add_entities: Callable,
-    discovery_info=None,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up the FVE CONTROL sensors platform."""
-
-    fve_controler = hass.data[DOMAIN]
-
-    entities = [
-        General_FVE_Control_Entity(
-            fve_controler,
-            {
-                "fve_data_attribute": "pv_power_mean",
-                "name": "FVE Control: PV power mean",
-                "unique_id": "pv_power_mean",
-                "device_class": SensorDeviceClass.POWER,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "native_unit_of_measurement": UnitOfPower.WATT,
-                "type": "float",
-            },
-        ),
-        General_FVE_Control_Entity(
-            fve_controler,
-            {
-                "fve_data_attribute": "pv_power_stderr",
-                "name": "FVE Control: PV power stderr",
-                "unique_id": "pv_power_stderr",
-                "device_class": SensorDeviceClass.POWER,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "native_unit_of_measurement": UnitOfPower.WATT,
-                "type": "float",
-            },
-        ),
-        General_FVE_Control_Entity(
-            fve_controler,
-            {
-                "fve_data_attribute": "grid_power_mean",
-                "name": "FVE Control: grid power mean",
-                "unique_id": "grid_power_mean",
-                "device_class": SensorDeviceClass.POWER,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "native_unit_of_measurement": UnitOfPower.WATT,
-                "type": "float",
-            },
-        ),
-        General_FVE_Control_Entity(
-            fve_controler,
-            {
-                "fve_data_attribute": "load_power_mean",
-                "name": "FVE Control: load power mean",
-                "unique_id": "load_power_mean",
-                "device_class": SensorDeviceClass.POWER,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "native_unit_of_measurement": UnitOfPower.WATT,
-                "type": "float",
-            },
-        ),
-        General_FVE_Control_Entity(
-            fve_controler,
-            {
-                "fve_data_attribute": "battery_power_mean",
-                "name": "FVE Control: battery power mean",
-                "unique_id": "battery_power_mean",
-                "device_class": SensorDeviceClass.POWER,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "native_unit_of_measurement": UnitOfPower.WATT,
-                "type": "float",
-            },
-        ),
-        General_FVE_Control_Entity(
-            fve_controler,
-            {
-                "fve_data_attribute": "battery_soc_mean",
-                "name": "FVE Control: battery SOC mean",
-                "unique_id": "battery_soc_mean",
-                "device_class": SensorDeviceClass.ENERGY_STORAGE,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "native_unit_of_measurement": PERCENTAGE,
-                "type": "float",
-            },
-        ),
-        General_FVE_Control_Entity(
-            fve_controler,
-            {
-                "fve_data_attribute": "fve_free_power",
-                "name": "FVE Control: free power for decision",
-                "unique_id": "free_power",
-                "device_class": SensorDeviceClass.POWER,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "native_unit_of_measurement": UnitOfPower.WATT,
-                "type": "float",
-            },
-        ),
-        General_FVE_Control_Entity(
-            fve_controler,
-            {
-                "fve_data_attribute": "fve_free_power_minimal",
-                "name": "FVE Control: free power minimal",
-                "unique_id": "free_power_minimal",
-                "device_class": SensorDeviceClass.POWER,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "native_unit_of_measurement": UnitOfPower.WATT,
-                "type": "float",
-            },
-        ),
-        General_FVE_Control_Entity(
-            fve_controler,
-            {
-                "fve_data_attribute": "fve_free_power_maximal",
-                "name": "FVE Control: free power maximal",
-                "unique_id": "free_power_maximal",
-                "device_class": SensorDeviceClass.POWER,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "native_unit_of_measurement": UnitOfPower.WATT,
-                "type": "float",
-            },
-        ),
-        General_FVE_Control_Entity(
-            fve_controler,
-            {
-                "fve_data_attribute": "fve_free_power_middle",
-                "name": "FVE Control: free power middle",
-                "unique_id": "free_power_middle",
-                "device_class": SensorDeviceClass.POWER,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "native_unit_of_measurement": UnitOfPower.WATT,
-                "type": "float",
-            },
-        ),
-        General_FVE_Control_Entity(
-            fve_controler,
-            {
-                "fve_data_attribute": "battery_gap",
-                "name": "FVE Control: watts to full battery",
-                "unique_id": "battery_gap",
-                "device_class": SensorDeviceClass.ENERGY,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "native_unit_of_measurement": UnitOfEnergy.WATT_HOUR,
-                "type": "float",
-            },
-        ),
-        General_FVE_Control_Entity(
-            fve_controler,
-            {
-                "fve_data_attribute": "hours_to_full_battery",
-                "name": "FVE Control: hours to full battery",
-                "unique_id": "hours_to_full_battery",
-                "state_class": SensorStateClass.MEASUREMENT,
-                "type": "float",
-            },
-        ),
-        General_FVE_Control_Entity(
-            fve_controler,
-            {
-                "fve_data_attribute": "hours_to_fve_start",
-                "name": "FVE Control: hours to start FVE at sun rising",
-                "unique_id": "hours_to_fve_start",
-                "state_class": SensorStateClass.MEASUREMENT,
-                "type": "float",
-            },
-        ),
-        General_FVE_Control_Entity(
-            fve_controler,
-            {
-                "fve_data_attribute": "hours_to_fve_stop",
-                "name": "FVE Control: hours to FVE stop at sun setting",
-                "unique_id": "hours_to_fve_stop",
-                "state_class": SensorStateClass.MEASUREMENT,
-                "type": "float",
-            },
-        ),
-        General_FVE_Control_Entity(
-            fve_controler,
-            {
-                "fve_data_attribute": "hours_to_fve_max",
-                "name": "FVE Control: hours to FVE max at noon",
-                "unique_id": "hours_to_fve_max",
-                "state_class": SensorStateClass.MEASUREMENT,
-                "type": "float",
-            },
-        ),
-        General_FVE_Control_Entity(
-            fve_controler,
-            {
-                "fve_data_attribute": "fve_phase",
-                "name": "FVE Control: phase of FVE production",
-                "unique_id": "fve_phase",
-                "options": ["night", "start", "maximum", "finish", "lowsun"],
-                "device_class": SensorDeviceClass.ENUM,
-                "type": "str",
-            },
-        ),
-        General_FVE_Control_Entity(
-            fve_controler,
-            {
-                "fve_data_attribute": "running_appliances_names",
-                "name": "FVE Control: running appliances",
-                "unique_id": "running_appliances_names",
-                "device_class": SensorDeviceClass.ENUM,
-                "type": "str",
-            },
-        ),
-        General_FVE_Control_Entity(
-            fve_controler,
-            {
-                "fve_data_attribute": "running_appliances_power",
-                "name": "FVE Control: running applikaces power",
-                "unique_id": "running_appliances_power",
-                "device_class": SensorDeviceClass.POWER,
-                "state_class": SensorStateClass.MEASUREMENT,
-                "native_unit_of_measurement": UnitOfPower.WATT,
-                "type": "float",
-            },
-        ),
-    ]
-
-    async_add_entities(entities, update_before_add=False)
-    # _LOGGER.debug(entities)
+    """Set up FVE Control sensors from a config entry."""
+    coordinator: FveDataUpdateCoordinator = entry.runtime_data
+    async_add_entities(
+        FveControlSensor(coordinator, description)
+        for description in SENSOR_DESCRIPTIONS
+    )
 
 
-class General_FVE_Control_Entity(SensorEntity):
-    """Representation mean value of PV power"""
+class FveControlSensor(CoordinatorEntity[FveDataUpdateCoordinator], SensorEntity):
+    """Sensor entity for FVE Control."""
 
+    entity_description: FveControlSensorDescription
     _attr_has_entity_name = True
 
-    def __init__(self, device, config) -> None:
-        super().__init__()
-        self.device = device
-        self._state = None
-        self._available = True
-        self._config = config
-        # _LOGGER.debug(f"sensor init: {config}" )
+    def __init__(
+        self,
+        coordinator: FveDataUpdateCoordinator,
+        description: FveControlSensorDescription,
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator)
+        self.entity_description = description
+        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_{description.key}"
+        self._attr_device_info = coordinator.controller.device_info
 
     @property
-    def name(self) -> str:
-        return self._config["name"]
-
-    @property
-    def unique_id(self) -> str:
-        return self._config["unique_id"]
-
-    @property
-    def device_class(self):
-        return self._config.get("device_class")
-
-    @property
-    def state_class(self):
-        return self._config.get("state_class")
-
-    @property
-    def options(self):
-        return self._config.get("options")
-
-    @property
-    def native_unit_of_measurement(self):
-        return self._config.get("native_unit_of_measurement")
-
-    @property
-    def available(self) -> bool | None:
-        return self.device.is_available()
-
-    @property
-    def state(self) -> Optional[str]:
-        return self._state
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return the device info."""
-        # _LOGGER.debug(f"sensor device info {self.device.device_info}")
-        return self.device.device_info
-
-    async def async_update(self) -> None:
-        """Fetch new state data for the sensor.
-        This is the only method that should fetch new data for Home Assistant.
-        """
-        # _LOGGER.debug(f"Async Sensor -> {self.device.get_state(self._attr_unique_id)}")
-        val = self.device.get_state(self._config["fve_data_attribute"])
-
-        if "type" in self._config:
-            if self._config["type"] == "float":
-                val = round(float(val), 2)
-
-            if self._config["type"] == "int":
-                val = int(val)
-
-        self._state = val
+    def native_value(self) -> float | str | None:
+        """Return the sensor value."""
+        if self.coordinator.data is None:
+            return None
+        value = self.entity_description.value_fn(self.coordinator.data)
+        if value is not None and self.entity_description.value_type == "float":
+            try:
+                return round(float(value), 2)
+            except (ValueError, TypeError):
+                return None
+        return value

@@ -137,7 +137,7 @@ Další částí je základní nastavení systému.
 |force_stop_power |ne| Hodnota, kdy systém vypíná bez ohledu na minimální časy běhu. Default: 1000W [W]|
 |update_interval_sec |ne| interval update senzorů [sec]. Default 10sec|
 |decision_interval_sec |ne| interval rozhodování o spuštění / vypnutí [sec]. Default 60sec |
-|history_in_minutes |ne |délka historie pro výpočet průměrů hodnot [min]. Default 10min|
+|max_history_in_minutes |ne |délka historie pro výpočet průměrů hodnot [min]. Default 10min|
 |analytics |ne | `true` nebo `false`. Povolí zasílání dat pro statistiky. Default `true` |
 
 A následuje definice spotřebičů. Jsou k dispozici dva typy:
@@ -252,6 +252,12 @@ V datech eventy je uvedeno:
   - maximum
 
 Start stop jsou asi jasné. Ostatní jsou pro spotřebiče typu wallbox. Jedná se o pokyn ke zvýšení / snížení výkonu o jeden stupeň a nebo nastavení na maximum či minimum.
+
+Pro snadnější filtrování v automatizacích integrace navíc vypaluje dva užší eventy:
+- `fve_control_<action>` — např. `fve_control_start`, `fve_control_stop`
+- `fve_control_<action>_<appliance_name>` — např. `fve_control_start_miner1`
+
+Datová payload je u všech tří eventů totožná, lze tedy v automatizaci odpadnout `condition` na `appliance_name` / `action`. Vedle bus eventů jsou k dispozici i moderní `EventEntity` (jeden globální + jeden per spotřebič), které lze použít jako trigger v UI editoru automatizací.
 
 Pro každou zátěž musíte vytvořit několik automatizací. Minimálně start / stop. 
 

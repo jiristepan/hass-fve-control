@@ -1,26 +1,32 @@
+"""FVE Load Control integration."""
+
 from __future__ import annotations
-from datetime import timedelta
 
 import logging
-
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers.event import async_track_time_interval
-from homeassistant.helpers.discovery import async_load_platform
-
-
-from .const import DOMAIN
-from .fve_controler import FVE_Controler
+from datetime import timedelta
+from typing import Any
 
 import voluptuous as vol
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.event import async_track_time_interval
+
+from .const import (
+    CONF_DECISION_INTERVAL,
+    CONF_UPDATE_INTERVAL,
+    DOMAIN,
+    PLATFORMS,
+)
+from .controller import FveController
+from .coordinator import FveDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [Platform.SENSOR]
+type FveControlConfigEntry = ConfigEntry[FveDataUpdateCoordinator]
 
+# YAML schema — kept for backward-compatible import path
 LOAD_SCHEMA = vol.Schema(
     {
         vol.Required("name"): cv.string,
@@ -55,7 +61,7 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Optional("use_openweather", default=False): bool,
                 vol.Optional("update_interval_sec", default=10): int,
                 vol.Optional("decision_interval_sec", default=60): int,
-                vol.Optional("history_in_minutes", default=10): int,
+                vol.Optional("max_history_in_minutes", default=10): int,
                 vol.Optional("appliances"): vol.All(cv.ensure_list, [LOAD_SCHEMA]),
                 vol.Optional("analytics", default=True): bool,
                 vol.Optional("treshold_power", default=100): int,
@@ -68,36 +74,69 @@ CONFIG_SCHEMA = vol.Schema(
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
-    """Set up the FVE Load Control component."""
-
+    """Handle YAML configuration — import to config entry."""
     if DOMAIN in config:
-        conf = config[DOMAIN]
-    else:
-        conf = {}
+        hass.async_create_task(
+            hass.config_entries.flow.async_init(
+                DOMAIN, context={"source": "import"}, data=config[DOMAIN]
+            )
+        )
+    return True
 
-    _LOGGER.debug(conf)
-    hass.data.setdefault(DOMAIN, {})
+
+async def async_setup_entry(hass: HomeAssistant, entry: FveControlConfigEntry) -> bool:
+    """Set up FVE Control from a config entry."""
+    # Merge entry.data (core config) + entry.options (runtime overrides)
+    config: dict[str, Any] = {**entry.data, **entry.options}
 
     device_info = DeviceInfo(
-        identifiers={(DOMAIN, "fve_controler")},
+        identifiers={(DOMAIN, entry.entry_id)},
         name="FVE Control",
-        manufacturer="jst",
-        model="FVE Control",
-        sw_version="1.0.0",
+        manufacturer="jiristepan",
+        model="FVE Load Control",
+        sw_version="0.5.0",
     )
-    fve_controler = FVE_Controler(conf, hass, device_info)
 
-    hass.data[DOMAIN] = fve_controler
+    controller = FveController(config, hass, device_info)
+    update_interval = config.get(CONF_UPDATE_INTERVAL, 10)
+    decision_interval = config.get(CONF_DECISION_INTERVAL, 60)
 
-    # Use async_load_platform instead of hass.helpers.discovery.load_platform
-    await async_load_platform(hass, "sensor", DOMAIN, {}, config)
-    await async_load_platform(hass, "number", DOMAIN, {}, config)
+    coordinator = FveDataUpdateCoordinator(hass, controller, update_interval)
+    await coordinator.async_config_entry_first_refresh()
 
-    async_track_time_interval(
-        hass, fve_controler.decide, timedelta(seconds=conf.get("decision_interval_sec"))
+    entry.runtime_data = coordinator
+
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # Decision cycle as separate interval (has side effects: fires events)
+    entry.async_on_unload(
+        async_track_time_interval(
+            hass, controller.decide, timedelta(seconds=decision_interval)
+        )
     )
-    async_track_time_interval(
-        hass, fve_controler.update, timedelta(seconds=conf.get("update_interval_sec"))
-    )
+
+    # Register services
+    async def handle_set_priority(call: ServiceCall) -> None:
+        controller.extra_load_priority = int(call.data["priority"])
+
+    async def handle_force_decide(call: ServiceCall) -> None:
+        await controller.decide()
+
+    async def handle_reset_history(call: ServiceCall) -> None:
+        controller.reset_history()
+
+    hass.services.async_register(DOMAIN, "set_priority", handle_set_priority)
+    hass.services.async_register(DOMAIN, "force_decide", handle_force_decide)
+    hass.services.async_register(DOMAIN, "reset_history", handle_reset_history)
 
     return True
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: FveControlConfigEntry) -> bool:
+    """Unload a config entry."""
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unload_ok:
+        hass.services.async_remove(DOMAIN, "set_priority")
+        hass.services.async_remove(DOMAIN, "force_decide")
+        hass.services.async_remove(DOMAIN, "reset_history")
+    return unload_ok
